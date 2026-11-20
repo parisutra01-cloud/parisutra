@@ -2376,17 +2376,29 @@ function GenericCategoryPage({ slug, content }) {
 
   return (
     <div className="bg-cream">
-      <section className="relative overflow-hidden bg-cream">
-        <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 py-12 md:grid-cols-2 md:py-16">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-maroon/80">{content.eyebrow}</p>
-            <h1 className="mt-3 font-display text-5xl leading-[1.05] text-maroon md:text-6xl">{content.title}</h1>
-            <p className="mt-5 max-w-md text-sm leading-relaxed text-neutral-700">{content.body}</p>
-            <a href="#collection" className="btn-primary mt-8 inline-flex text-xs tracking-widest">
+      <section className="relative min-h-[400px] overflow-hidden bg-cream md:min-h-[460px]">
+        <img
+          src={content.heroImage}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-[70%_center]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#f7f1ea] from-[10%] via-[#f7f1ea]/92 via-[40%] to-transparent to-[65%]" />
+        <BotanicalLineart className="pointer-events-none absolute left-0 top-0 h-full w-28 opacity-40 md:w-36" />
+        <div className="relative z-10 mx-auto flex max-w-7xl items-center px-8 py-14 md:min-h-[460px] md:px-14">
+          <div className="max-w-md">
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-maroon/80">
+              {content.eyebrow}
+            </p>
+            <h1 className="mt-3 font-serif text-4xl font-medium leading-[1.08] text-maroon md:text-5xl">
+              {content.title}
+            </h1>
+            <p className="mt-4 max-w-sm text-xs leading-relaxed text-neutral-600 sm:text-sm">
+              {content.body}
+            </p>
+            <a href="#collection" className="btn-primary mt-7 inline-flex px-5 py-2.5 text-[11px] tracking-[0.14em]">
               {content.cta} →
             </a>
           </div>
-          <img src={content.heroImage} alt="" className="aspect-[5/4] w-full rounded-sm object-cover" />
         </div>
       </section>
 

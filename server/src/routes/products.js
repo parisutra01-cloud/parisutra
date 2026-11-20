@@ -10,6 +10,9 @@ import { StockInputError, parseStockAdjustment, parseStockSet, parseExpectedStoc
 import {
   StockAdjustmentError, adjustStock, setStock, expectedStockFilter, stockValue, logStockChange,
 } from '../services/stockAdjustment.js';
+import {
+  LOW_STOCK_EXPR, OUT_OF_STOCK_EXPR, INVENTORY_STOCK_FILTERS, INVENTORY_PROJECTION, toInventoryItem, inventoryStats,
+} from '../services/inventory.js';
 
 const router = asyncRouter();
 
@@ -125,14 +128,8 @@ const ADMIN_SORTS = {
 };
 
 // Low stock: tracked, in stock, and at or below its own alert level (default 10 for older documents).
-const LOW_STOCK_EXPR = {
-  $and: [
-    { $ne: ['$trackStock', false] },
-    { $gt: [{ $ifNull: ['$stock', 0] }, 0] },
-    { $lte: [{ $ifNull: ['$stock', 0] }, { $ifNull: ['$lowStockAlert', 10] }] },
-  ],
-};
-const OUT_OF_STOCK_EXPR = { $and: [{ $ne: ['$trackStock', false] }, { $lte: [{ $ifNull: ['$stock', 0] }, 0] }] };
+// LOW_STOCK_EXPR / OUT_OF_STOCK_EXPR live in services/inventory.js (shared with the inventory screen).
+// On the product list "in stock" also covers untracked products (they can always be ordered).
 const IN_STOCK_EXPR = {
   $or: [
     { $eq: ['$trackStock', false] },
@@ -156,32 +153,38 @@ async function productStats() {
   return { total: stats.total, active: stats.active, inactive: stats.total - stats.active, lowStock: stats.lowStock, outOfStock: stats.outOfStock };
 }
 
-/** Admin product list: every status, search by title/SKU/slug, filters, sorting, pagination, KPI stats. */
-router.get('/manage', authRequired, adminRequired, async (req, res) => {
-  const page = clampInt(req.query.page, 1, 1, 100000);
-  const limit = clampInt(req.query.limit, 20, 1, 100);
-  const filter = {};
+const MANAGE_STOCK_FILTERS = { low: LOW_STOCK_EXPR, out: OUT_OF_STOCK_EXPR, in: IN_STOCK_EXPR };
 
-  const q = queryString(req.query.q).slice(0, 100);
+/** Shared admin list filter: q (title/SKU/slug), category, status, stock level. Only plain strings are read. */
+function adminProductFilter(query, stockFilters) {
+  const filter = {};
+  const q = queryString(query.q).slice(0, 100);
   if (q) {
     const pattern = new RegExp(escapeRegex(q), 'i');
     filter.$or = [{ title: pattern }, { sku: pattern }, { slug: pattern }];
   }
-  const category = queryString(req.query.category);
+  const category = queryString(query.category);
   if (category) {
-    if (!mongoose.isValidObjectId(category)) return badRequest(res, 'Invalid category filter');
+    if (!mongoose.isValidObjectId(category)) return { error: 'Invalid category filter' };
     filter.category = category;
   }
-  const status = queryString(req.query.status) || 'all';
+  const status = queryString(query.status) || 'all';
   if (status === 'active') filter.isActive = { $ne: false };
   else if (status === 'inactive') filter.isActive = false;
-  else if (status !== 'all') return badRequest(res, 'Invalid status filter');
+  else if (status !== 'all') return { error: 'Invalid status filter' };
 
-  const stock = queryString(req.query.stock) || 'all';
-  if (stock === 'low') filter.$expr = LOW_STOCK_EXPR;
-  else if (stock === 'out') filter.$expr = OUT_OF_STOCK_EXPR;
-  else if (stock === 'in') filter.$expr = IN_STOCK_EXPR;
-  else if (stock !== 'all') return badRequest(res, 'Invalid stock filter');
+  const stock = queryString(query.stock) || 'all';
+  if (Object.prototype.hasOwnProperty.call(stockFilters, stock)) filter.$expr = stockFilters[stock];
+  else if (stock !== 'all') return { error: 'Invalid stock filter' };
+  return { filter };
+}
+
+/** Admin product list: every status, search by title/SKU/slug, filters, sorting, pagination, KPI stats. */
+router.get('/manage', authRequired, adminRequired, async (req, res) => {
+  const page = clampInt(req.query.page, 1, 1, 100000);
+  const limit = clampInt(req.query.limit, 20, 1, 100);
+  const { filter, error } = adminProductFilter(req.query, MANAGE_STOCK_FILTERS);
+  if (error) return badRequest(res, error);
 
   const sort = { ...(ADMIN_SORTS[queryString(req.query.sort)] || ADMIN_SORTS.newest), _id: -1 };
 
@@ -191,6 +194,31 @@ router.get('/manage', authRequired, adminRequired, async (req, res) => {
     productStats(),
   ]);
   res.json({ products, pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) }, stats });
+});
+
+/**
+ * Inventory list (Phase 5G.4): the same search/category/status filters as /manage plus
+ * stock = all | in | low | out | untracked and tracking = all | tracked | untracked.
+ * Returns only inventory fields (no prices) and inventory KPI counts. Read-only.
+ */
+router.get('/inventory', authRequired, adminRequired, async (req, res) => {
+  const page = clampInt(req.query.page, 1, 1, 100000);
+  const limit = clampInt(req.query.limit, 20, 1, 100);
+  const { filter, error } = adminProductFilter(req.query, INVENTORY_STOCK_FILTERS);
+  if (error) return badRequest(res, error);
+  const tracking = queryString(req.query.tracking) || 'all';
+  if (tracking === 'tracked') filter.trackStock = { $ne: false };
+  else if (tracking === 'untracked') filter.trackStock = false;
+  else if (tracking !== 'all') return badRequest(res, 'Invalid tracking filter');
+
+  const sort = { ...(ADMIN_SORTS[queryString(req.query.sort)] || ADMIN_SORTS['title-asc']), _id: -1 };
+  const [products, total, stats] = await Promise.all([
+    Product.find(filter).select(INVENTORY_PROJECTION).populate('category', 'name').sort(sort)
+      .skip((page - 1) * limit).limit(limit).lean(),
+    Product.countDocuments(filter),
+    inventoryStats(),
+  ]);
+  res.json({ products: products.map(toInventoryItem), pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) }, stats });
 });
 
 /** Admin product detail (any status, includes costPrice). */
