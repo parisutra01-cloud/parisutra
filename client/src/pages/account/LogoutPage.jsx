@@ -63,7 +63,7 @@ export default function LogoutPage() {
           Log Out of Your Account?
         </h2>
         <p className="mx-auto mt-3 max-w-md text-xs leading-relaxed text-neutral-600 md:text-sm">
-          You will be signed out from ARC LEGACY and won&apos;t be able to access your orders, wishlist, and saved addresses.
+          You will be signed out from PARISUTRA and won&apos;t be able to access your orders, wishlist, and saved addresses.
         </p>
 
         {/* Cancel & Logout Buttons */}

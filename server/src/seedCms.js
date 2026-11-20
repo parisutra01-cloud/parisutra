@@ -93,7 +93,7 @@ export async function seedCms() {
     {
       key: 'story-teaser',
       title: 'Crafted Details. Timeless Traditions.',
-      body: 'From a passion for craft to India\'s first lace brand — discover how ARC LEGACY supports creators nationwide.',
+      body: 'From a passion for craft to India\'s first lace brand — discover how PARISUTRA supports creators nationwide.',
       ctaLabel: 'Our Story',
       ctaLink: '/our-story',
       imageUrl: '/images/product-6.jpg',

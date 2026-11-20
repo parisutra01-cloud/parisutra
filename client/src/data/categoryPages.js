@@ -29,7 +29,7 @@ export const CATEGORY_PAGES = {
     ],
     heritageEyebrow: 'The Art of Lace',
     heritageTitle: 'Our Heritage. Your Creations.',
-    heritageBody: 'ARC LEGACY laces are chosen for designers who want a precise edge, a consistent repeat, and a finish that holds its detail after stitching.',
+    heritageBody: 'PARISUTRA laces are chosen for designers who want a precise edge, a consistent repeat, and a finish that holds its detail after stitching.',
     heritageImage: '/images/product-10.jpg',
   },
   latkans: {
@@ -53,9 +53,9 @@ export const CATEGORY_PAGES = {
       cta: 'DISCOVER DESIGNER LATKANS',
       image: '/images/latkans/promo_bg.jpg',
     },
-    heritageEyebrow: 'THE STORY BEHIND ARC LEGACY',
+    heritageEyebrow: 'THE STORY BEHIND PARISUTRA',
     heritageTitle: 'Crafted Details. Timeless Traditions.',
-    heritageBody: "At ARC LEGACY, we bring together India's rich textile heritage and contemporary design. Our collection is carefully curated from skilled artisans and trusted partners, with a focus on fine detailing, quality materials and timeless craftsmanship. From traditional bridal latkans to modern designer tassels, every piece is chosen to add elegance to your creations.",
+    heritageBody: "At PARISUTRA, we bring together India's rich textile heritage and contemporary design. Our collection is carefully curated from skilled artisans and trusted partners, with a focus on fine detailing, quality materials and timeless craftsmanship. From traditional bridal latkans to modern designer tassels, every piece is chosen to add elegance to your creations.",
     heritageImage: '/images/latkans/story_2.jpg',
     storyCollage: [
       '/images/latkans/story_1.jpg',
@@ -129,7 +129,7 @@ export const CATEGORY_PAGES = {
     ],
     heritageEyebrow: 'OUR CRAFTSMANSHIP',
     heritageTitle: 'Thoughtfully Selected. Beautifully Finished.',
-    heritageBody: 'Every pom pom trim at ARC LEGACY is crafted with attention to detail – from premium materials and secure stitching to consistent finishing and colour fastness. We work with skilled artisans to bring you trims that add charm, quality and timeless beauty to your creations.',
+    heritageBody: 'Every pom pom trim at PARISUTRA is crafted with attention to detail – from premium materials and secure stitching to consistent finishing and colour fastness. We work with skilled artisans to bring you trims that add charm, quality and timeless beauty to your creations.',
     heritageImage: '/images/pom-pom-trims/story_2.jpg',
     storyCollage: [
       '/images/pom-pom-trims/story_1.jpg',
@@ -166,7 +166,7 @@ export const CATEGORY_PAGES = {
     ],
     heritageEyebrow: 'THE ART OF GOTA PATTI',
     heritageTitle: 'Our Heritage. Your Creations.',
-    heritageBody: 'At ARC LEGACY, we preserve the timeless craft of gota patti with carefully sourced materials and skilled craftsmanship. Each trim is designed to bring out the beauty of Indian traditions in contemporary creations.',
+    heritageBody: 'At PARISUTRA, we preserve the timeless craft of gota patti with carefully sourced materials and skilled craftsmanship. Each trim is designed to bring out the beauty of Indian traditions in contemporary creations.',
     heritageImage: '/images/provided-floral-lace.jpg',
     storyCollage: [
       '/images/home-mfg-hands.jpg',
@@ -205,7 +205,7 @@ export const CATEGORY_PAGES = {
     ],
     heritageEyebrow: 'THE ART BEHIND OUR EMBELLISHMENTS',
     heritageTitle: 'Crafted to Inspire Your Creations',
-    heritageBody: 'At ARC LEGACY, our embellishments are thoughtfully curated to bring artistry and elegance to your designs. Each piece is crafted with premium materials, ensuring lasting beauty and a refined finish for every creation.',
+    heritageBody: 'At PARISUTRA, our embellishments are thoughtfully curated to bring artistry and elegance to your designs. Each piece is crafted with premium materials, ensuring lasting beauty and a refined finish for every creation.',
     heritageImage: '/images/embellishments/story_2.jpg',
     storyCollage: [
       '/images/embellishments/story_1.jpg',
@@ -247,7 +247,7 @@ export function categoryPageContent(slug, name) {
     ],
     heritageEyebrow: 'Our Craft',
     heritageTitle: 'Our Heritage. Your Creations.',
-    heritageBody: 'ARC LEGACY pieces are prepared for makers who need the same design, the same finish, and a trim they can trust on the next order.',
+    heritageBody: 'PARISUTRA pieces are prepared for makers who need the same design, the same finish, and a trim they can trust on the next order.',
     heritageImage: '/images/product-3.jpg',
   };
 }

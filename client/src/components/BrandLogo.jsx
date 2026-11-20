@@ -1,36 +1,31 @@
 import { Link } from 'react-router-dom';
 
-/** Official brand files: `public/images/arc-logo.jpg` and transparent lockup `public/images/arc-logo-lockup.png` */
-const lockupTransparent = '/images/arc-logo-lockup.png';
-const lockupMaroon = '/images/arc-logo.jpg';
+const lockupOnCream = '/images/parisutra-logo-maroon.png';
+const lockupOnMaroon = '/images/parisutra-logo-gold.png';
 
 const heights = {
-  header: 'h-[76px] w-auto max-w-[min(100%,220px)] md:h-[92px] md:max-w-[260px]',
-  admin: 'h-[72px] w-auto max-w-[200px]',
-  footer: 'h-[140px] w-auto max-w-[240px] rounded-lg',
+  header: 'h-[72px] w-auto max-w-[min(100%,240px)] md:h-[88px] md:max-w-[280px]',
+  admin: 'h-[64px] w-auto max-w-[200px]',
+  footer: 'h-[120px] w-auto max-w-[260px]',
 };
 
 export default function BrandLogo({ linked = true, to = '/', size = 'header' }) {
   const onDark = size === 'footer';
-  const src = onDark ? lockupMaroon : lockupTransparent;
   const img = (
     <img
-      src={src}
-      alt="ARC LEGACY — India's First Lace Brand"
+      src={onDark ? lockupOnMaroon : lockupOnCream}
+      alt="parisutra — India's First Lace Brand"
       className={`object-contain object-center ${heights[size] || heights.header}`}
-      width={260}
-      height={onDark ? 140 : 92}
+      width={280}
+      height={onDark ? 120 : 88}
       decoding="async"
     />
   );
 
-  const wrap = linked ? (
+  if (!linked) return <span className="inline-flex justify-center">{img}</span>;
+  return (
     <Link to={to} className="inline-flex justify-center transition hover:opacity-90">
       {img}
     </Link>
-  ) : (
-    <span className="inline-flex justify-center">{img}</span>
   );
-
-  return wrap;
 }

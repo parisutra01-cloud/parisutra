@@ -16,5 +16,7 @@ export function verifyRazorpaySignature({ orderId, paymentId, signature }) {
   const secret = process.env.RAZORPAY_KEY_SECRET;
   const body = `${orderId}|${paymentId}`;
   const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
-  return expected === signature;
+  const actual = String(signature || '');
+  if (expected.length !== actual.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(actual));
 }

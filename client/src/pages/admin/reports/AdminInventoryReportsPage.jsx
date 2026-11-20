@@ -151,7 +151,7 @@ export default function AdminInventoryReportsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'arc-legacy-inventory-report.csv';
+    a.download = 'parisutra-inventory-report.csv';
     a.click();
     URL.revokeObjectURL(url);
     triggerToast('Inventory report exported to CSV.');
@@ -713,7 +713,7 @@ export default function AdminInventoryReportsPage() {
               <label className="block text-[11px] font-semibold text-[#4A3439] mb-1">Brand</label>
               <select className="w-full px-2.5 py-1.5 text-[11px] rounded-lg border border-[#E8D8DC] bg-white text-[#4A3439]">
                 <option>All Brands</option>
-                <option>ARC LEGACY</option>
+                <option>PARISUTRA</option>
               </select>
             </div>
 

@@ -1,4 +1,4 @@
-# MongoDB Atlas setup (ARC LEGACY)
+# MongoDB Atlas setup (PARISUTRA)
 
 ## 1. Create cluster
 

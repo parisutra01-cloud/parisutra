@@ -392,7 +392,7 @@ function EmbellishmentsPage({ content }) {
             {/* Left Column */}
             <div>
               <h2 className="font-serif text-3xl leading-tight text-maroon md:text-4xl">
-                Buying in Bulk?<br />Partner with ARC LEGACY
+                Buying in Bulk?<br />Partner with PARISUTRA
               </h2>
               <p className="mt-3 max-w-sm text-xs sm:text-sm text-neutral-600">
                 Special pricing for boutiques, designers, tailors and resellers.
@@ -410,7 +410,7 @@ function EmbellishmentsPage({ content }) {
             <div className="overflow-hidden rounded-lg border border-gold/30 shadow-sm">
               <img
                 src="/images/embellishments/wholesale_center.jpg"
-                alt="ARC LEGACY Bulk Embellishments"
+                alt="PARISUTRA Bulk Embellishments"
                 className="aspect-[16/10] w-full object-cover transition duration-500 hover:scale-105"
               />
             </div>
@@ -908,7 +908,7 @@ function LatkansPage({ content }) {
             {/* Left Column */}
             <div>
               <h2 className="font-serif text-3xl leading-tight text-maroon md:text-4xl">
-                Buying in Bulk?<br />Partner with ARC LEGACY
+                Buying in Bulk?<br />Partner with PARISUTRA
               </h2>
               <p className="mt-3 max-w-sm text-xs sm:text-sm text-neutral-600">
                 Special pricing for boutiques, designers, tailors and resellers.
@@ -926,7 +926,7 @@ function LatkansPage({ content }) {
             <div className="overflow-hidden rounded-lg border border-gold/30 shadow-sm">
               <img
                 src="/images/latkans/wholesale_center.jpg"
-                alt="ARC LEGACY Bulk Latkans"
+                alt="PARISUTRA Bulk Latkans"
                 className="aspect-[16/10] w-full object-cover transition duration-500 hover:scale-105"
               />
             </div>
@@ -1387,7 +1387,7 @@ function PomPomPage({ content }) {
             {/* Left Column */}
             <div>
               <h2 className="font-serif text-3xl leading-tight text-maroon md:text-4xl">
-                Buying in Bulk?<br />Partner with ARC LEGACY
+                Buying in Bulk?<br />Partner with PARISUTRA
               </h2>
               <p className="mt-3 max-w-sm text-xs sm:text-sm text-neutral-600">
                 Special pricing for boutiques, designers, tailors and resellers.
@@ -1405,7 +1405,7 @@ function PomPomPage({ content }) {
             <div className="overflow-hidden rounded-lg border border-gold/30 shadow-sm">
               <img
                 src="/images/pom-pom-trims/wholesale_center.jpg"
-                alt="ARC LEGACY Bulk Pom Pom Trims"
+                alt="PARISUTRA Bulk Pom Pom Trims"
                 className="aspect-[16/10] w-full object-cover transition duration-500 hover:scale-105"
               />
             </div>
@@ -2213,7 +2213,7 @@ function GotaPattiPage({ content }) {
             {/* Left Column */}
             <div>
               <h2 className="font-serif text-3xl leading-tight text-maroon md:text-4xl">
-                Buying in Bulk?<br />Partner with ARC LEGACY
+                Buying in Bulk?<br />Partner with PARISUTRA
               </h2>
               <p className="mt-3 max-w-sm text-xs text-neutral-600 sm:text-sm">
                 Special pricing for boutiques, designers, tailors and resellers.
@@ -2231,7 +2231,7 @@ function GotaPattiPage({ content }) {
             <div className="overflow-hidden rounded-lg border border-gold/30 shadow-sm">
               <img
                 src="/images/home-mfg-shelves.jpg"
-                alt="ARC LEGACY Bulk Gota Patti"
+                alt="PARISUTRA Bulk Gota Patti"
                 className="aspect-[16/10] w-full object-cover transition duration-500 hover:scale-105"
               />
             </div>
@@ -2487,7 +2487,7 @@ function GenericCategoryPage({ slug, content }) {
       <section className="bg-maroon text-white">
         <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 py-12 lg:grid-cols-[1.4fr_1fr]">
           <div>
-            <h2 className="font-serif text-3xl">Buying in Bulk? Partner with ARC LEGACY</h2>
+            <h2 className="font-serif text-3xl">Buying in Bulk? Partner with PARISUTRA</h2>
             <p className="mt-3 max-w-xl text-sm text-white/80">Special pricing for boutiques, designers, fashion and resellers. Wide range, consistent quality and reliable dispatch.</p>
             <Link to="/wholesale" className="btn-outline mt-6 inline-flex border-gold-light text-xs text-gold-light hover:bg-gold-light hover:text-maroon">Enquire for Wholesale</Link>
           </div>

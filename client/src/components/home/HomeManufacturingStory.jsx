@@ -422,54 +422,52 @@ export default function HomeManufacturingStory({ storyCtaLink = '/our-story' }) 
         {/* ═════════════════════════════════════════════════════════════ */}
         {/* 2. OUR BRAND STORY                                           */}
         {/* ═════════════════════════════════════════════════════════════ */}
-        <div className="relative overflow-hidden rounded-lg bg-[#FAF4EB]">
-          <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[1fr_1.15fr] lg:gap-8">
+        <div className="relative overflow-hidden rounded-lg bg-[#FAF4EB] p-3 sm:p-4">
+          <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-2 lg:gap-8">
 
-            {/* Left: Wide Hero Lace Image */}
-            <div className="overflow-hidden rounded-md sm:rounded-lg">
+            <div className="relative order-2 flex flex-col justify-center px-2 py-4 sm:px-4 sm:py-6 lg:order-1 lg:px-8 lg:py-8">
+              <HeritageArchitectureSvg className="pointer-events-none absolute -left-2 bottom-0 hidden h-[92%] w-44 text-[#BA8C4C]/35 lg:block select-none" />
+
+              <div className="relative max-w-md lg:ml-16">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9E6E38]">
+                  THE STORY BEHIND PARISUTRA
+                </p>
+                <div className="mt-3 h-px w-12 bg-[#C49A5A]" />
+
+                <h2 className="mt-4 font-serif text-3xl text-maroon sm:text-4xl md:text-[40px] leading-tight">
+                  Our Brand Story
+                </h2>
+
+                <p className="mt-4 text-[13.5px] leading-relaxed text-[#5A5550]">
+                  At PARISUTRA, we celebrate the details that transform fabric into something memorable. Our collection brings together traditional Indian embellishments and contemporary design, created for makers, boutiques, designers and creators who value quality, beauty and timeless style.
+                </p>
+
+                <div className="mt-6">
+                  <Link
+                    to={storyCtaLink || '/our-story'}
+                    className="inline-flex items-center justify-center gap-2 rounded-[4px] bg-[#5C1422] px-5 py-2.5 sm:px-6 sm:py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#450e18] shadow-sm"
+                  >
+                    DISCOVER OUR PROCESS <span aria-hidden="true">→</span>
+                  </Link>
+                </div>
+
+                <div className="mt-7 flex items-center gap-2.5">
+                  <span className="h-px w-8 bg-[#C49A5A]/80" />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9E6E38]">
+                    INDIA&apos;S FIRST LACE BRAND
+                  </span>
+                  <IndianMandalaMotif className="h-4 w-4 text-[#BA8C4C]" />
+                </div>
+              </div>
+            </div>
+
+            <div className="order-1 overflow-hidden rounded-md border border-[#C49A5A]/50 sm:rounded-lg lg:order-2">
               <img
                 src="/images/home-story-lace.jpg"
                 alt="Gold embroidered lace on maroon silk"
-                className="h-56 w-full object-cover sm:h-64 md:h-72 lg:h-[310px] transition-transform duration-500 hover:scale-105"
+                className="h-64 w-full object-cover sm:h-72 md:h-80 lg:h-full lg:min-h-[340px] transition-transform duration-500 hover:scale-105"
                 loading="lazy"
               />
-            </div>
-
-            {/* Right: Brand Story Content with Heritage Monument Art */}
-            <div className="relative py-2 sm:py-3 lg:pr-24">
-              {/* Heritage Monument Background Art (Far right / bottom right) */}
-              <HeritageArchitectureSvg className="pointer-events-none absolute -right-6 -bottom-6 hidden h-[125%] w-60 text-[#BA8C4C]/40 lg:block select-none" />
-
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9E6E38]">
-                THE STORY BEHIND ARC LEGACY
-              </p>
-
-              <h2 className="mt-2 font-serif text-3xl text-maroon sm:text-4xl md:text-[38px] leading-tight">
-                Our Brand Story
-              </h2>
-
-              <p className="mt-3.5 max-w-lg text-[13.5px] leading-relaxed text-[#5A5550]">
-                At ARC LEGACY, we celebrate the details that transform fabric into something memorable. Our collection brings together traditional Indian embellishments and contemporary design, created for makers, boutiques, designers and creators who value quality, beauty and timeless style.
-              </p>
-
-              {/* Action Button */}
-              <div className="mt-6">
-                <Link
-                  to={storyCtaLink || '/our-story'}
-                  className="inline-flex items-center justify-center gap-2 rounded-[4px] bg-[#5C1422] px-5 py-2.5 sm:px-6 sm:py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-[#450e18] shadow-sm"
-                >
-                  DISCOVER OUR PROCESS <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-
-              {/* Tagline: INDIA'S FIRST LACE BRAND */}
-              <div className="mt-6 flex items-center gap-2.5">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9E6E38]">
-                  INDIA&apos;S FIRST LACE BRAND
-                </span>
-                <IndianMandalaMotif className="h-4 w-4 text-[#BA8C4C]" />
-              </div>
-
             </div>
 
           </div>

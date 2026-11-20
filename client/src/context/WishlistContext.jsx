@@ -152,7 +152,7 @@ export function WishlistProvider({ children }) {
           {
             _id: id,
             slug: itemOrId.slug || String(id),
-            title: itemOrId.title || 'ARC LEGACY Trim',
+            title: itemOrId.title || 'PARISUTRA Trim',
             size: itemOrId.size || '3 cm',
             price: itemOrId.price || 280,
             unit: itemOrId.unit || 'Meter',

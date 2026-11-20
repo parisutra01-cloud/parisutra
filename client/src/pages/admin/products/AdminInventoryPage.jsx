@@ -253,7 +253,7 @@ export default function AdminInventoryPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'arc-legacy-inventory-report.csv';
+    a.download = 'parisutra-inventory-report.csv';
     a.click();
     URL.revokeObjectURL(url);
     triggerToast('Inventory report exported to CSV.');

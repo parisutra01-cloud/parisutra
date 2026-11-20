@@ -39,7 +39,7 @@ function TrustIcon({ title }) {
 
 export default function TrustBar() {
   return (
-    <section className="border-y border-neutral-200 bg-cream-dark">
+    <section className="hidden border-y border-neutral-200 bg-cream-dark md:block">
       <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-8 md:grid-cols-4">
         {TRUST_ITEMS.map((item) => (
           <div key={item.title} className="text-center">

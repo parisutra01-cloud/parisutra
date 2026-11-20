@@ -3,8 +3,17 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body {
+    touch-action: pan-x pan-y;
+  }
   body {
     @apply font-sans bg-cream text-neutral-800;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px;
   }
 }
 
@@ -16,6 +25,22 @@
 }
 
 @layer components {
+  .ticker-track {
+    animation: ticker 22s linear infinite;
+  }
+  @keyframes ticker {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ticker-track {
+      animation: none;
+    }
+  }
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-full bg-maroon px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-maroon-dark;
   }

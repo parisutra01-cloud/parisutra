@@ -29,7 +29,7 @@ const productSchema = new mongoose.Schema(
     price: { type: Number, required: true },
     comparePrice: Number,
     costPrice: Number,
-    unit: { type: String, enum: ['meter', 'pair', 'piece', 'pack'], default: 'meter' },
+    unit: { type: String, enum: ['meter', 'pair', 'piece', 'pack'], default: 'meter', lowercase: true, trim: true },
     stock: { type: Number, default: 0 },
     lowStockAlert: { type: Number, default: 10 },
     trackStock: { type: Boolean, default: true },

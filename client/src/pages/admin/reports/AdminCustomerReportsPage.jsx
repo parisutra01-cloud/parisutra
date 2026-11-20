@@ -131,7 +131,7 @@ export default function AdminCustomerReportsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'arc-legacy-customer-report.csv';
+    a.download = 'parisutra-customer-report.csv';
     a.click();
     URL.revokeObjectURL(url);
     triggerToast('Customer report exported to CSV.');

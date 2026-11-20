@@ -4,15 +4,15 @@ Use **two Vercel projects** from the **same GitHub repo**.
 
 | Project | Vercel root directory | Config file | URL example |
 |---------|----------------------|-------------|-------------|
-| **Frontend** (storefront) | `client` | `client/vercel.json` | `https://arc-legacy.vercel.app` |
-| **API** (Express) | `.` (repo root) | `vercel.json` | `https://arc-legacy-api.vercel.app` |
+| **Frontend** (storefront) | `client` | `client/vercel.json` | `https://parisutra.vercel.app` |
+| **API** (Express) | `.` (repo root) | `vercel.json` | `https://parisutra-api.vercel.app` |
 
 ---
 
 ## 1. API project (backend)
 
 1. Vercel → **Add New Project** → same repo.
-2. **Project name:** e.g. `arc-legacy-api`.
+2. **Project name:** e.g. `parisutra-api`.
 3. **Root Directory:** `.` (repository root — **not** `client`).
 4. Framework: **Other** (uses root `vercel.json`).
 5. **Environment variables** (no `VITE_*` needed here):
@@ -36,7 +36,7 @@ Use **two Vercel projects** from the **same GitHub repo**.
 ## 2. Frontend project (storefront)
 
 1. **Add New Project** → same repo again (second project).
-2. **Project name:** e.g. `arc-legacy`.
+2. **Project name:** e.g. `parisutra`.
 3. **Root Directory:** `client` ← **required** (Edit in Settings → General if wrong).
 4. Uses `client/vercel.json` — `npm run build` → `dist/`.
 5. **Do not** use repo root (`.`) for the frontend project — that uses API `vercel.json` and the site will not build.

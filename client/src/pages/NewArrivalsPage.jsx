@@ -270,7 +270,7 @@ export default function NewArrivalsPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-center font-serif text-2xl text-maroon sm:text-left md:text-3xl">
             <span className="text-gold mr-2 text-lg">✦</span>
-            Just Arrived at ARC LEGACY
+            Just Arrived at PARISUTRA
             <span className="text-gold ml-2 text-lg">✦</span>
           </h2>
           <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-500">
@@ -438,13 +438,13 @@ export default function NewArrivalsPage() {
             {/* Text */}
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-gold">
-                THE MAKING OF ARC LEGACY
+                THE MAKING OF PARISUTRA
               </p>
               <h2 className="mt-2 font-serif text-3xl text-maroon md:text-4xl leading-tight">
                 New Season. Enduring Craft.
               </h2>
               <p className="mt-5 text-xs sm:text-sm leading-relaxed text-neutral-600">
-                At ARC LEGACY, every piece is thoughtfully sourced and crafted with attention to detail. Our new arrivals celebrate traditional Indian craftsmanship with contemporary designs, made to add beauty and timeless elegance to your creations.
+                At PARISUTRA, every piece is thoughtfully sourced and crafted with attention to detail. Our new arrivals celebrate traditional Indian craftsmanship with contemporary designs, made to add beauty and timeless elegance to your creations.
               </p>
               <Link
                 to="/our-story"
@@ -464,7 +464,7 @@ export default function NewArrivalsPage() {
             {/* Left Column */}
             <div>
               <h2 className="font-serif text-3xl leading-tight text-maroon md:text-4xl">
-                Stock the Latest Styles<br />Partner with ARC LEGACY
+                Stock the Latest Styles<br />Partner with PARISUTRA
               </h2>
               <p className="mt-3 max-w-sm text-xs sm:text-sm text-neutral-600">
                 Special pricing for boutiques, designers, tailors and resellers.
@@ -482,7 +482,7 @@ export default function NewArrivalsPage() {
             <div className="overflow-hidden rounded-lg border border-gold/30 shadow-sm">
               <img
                 src="/images/new-arrivals/wholesale_center.jpg"
-                alt="ARC LEGACY Bulk New Arrivals"
+                alt="PARISUTRA Bulk New Arrivals"
                 className="aspect-[16/10] w-full object-cover transition duration-500 hover:scale-105"
               />
             </div>

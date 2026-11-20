@@ -1,9 +1,13 @@
-import { Router } from 'express';
+import { asyncRouter } from '../utils/asyncRouter.js';
 import mongoose from 'mongoose';
 import { v2 as cloudinary } from 'cloudinary';
 import { authRequired, adminRequired } from '../middleware/auth.js';
 import { Category } from '../models/Category.js';
 import { MediaAsset } from '../models/MediaAsset.js';
+import { Product } from '../models/Product.js';
+import { Banner } from '../models/Banner.js';
+import { BlogPost } from '../models/BlogPost.js';
+import { HomepageSection } from '../models/HomepageSection.js';
 import {
   ALLOWED_IMAGE_FORMATS,
   MAX_IMAGE_BYTES,
@@ -12,7 +16,7 @@ import {
   secureUrlMatchesCloud,
 } from '../utils/mediaOrganization.js';
 
-const router = Router();
+const router = asyncRouter();
 
 function configureCloudinary() {
   const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
@@ -25,6 +29,20 @@ function configureCloudinary() {
     api_secret: CLOUDINARY_API_SECRET,
   });
   return true;
+}
+
+/** Lists where an image URL is referenced (products, banners, categories, blog posts, homepage sections). */
+async function imageUsage(url) {
+  const [products, banners, categories, blogs, sections] = await Promise.all([
+    Product.countDocuments({ 'images.url': url }),
+    Banner.countDocuments({ imageUrl: url }),
+    Category.countDocuments({ image: url }),
+    BlogPost.countDocuments({ coverImage: url }),
+    HomepageSection.countDocuments({ imageUrl: url }),
+  ]);
+  return [
+    [products, 'product'], [banners, 'banner'], [categories, 'category'], [blogs, 'blog post'], [sections, 'homepage section'],
+  ].filter(([n]) => n > 0).map(([n, label]) => `${n} ${label}${n > 1 ? 's' : ''}`);
 }
 
 async function activeCategory(categoryId) {
@@ -41,7 +59,7 @@ router.get('/config', authRequired, adminRequired, (_req, res) => {
     enabled: true,
     cloudName: process.env.CLOUDINARY_CLOUD_NAME,
     apiKey: process.env.CLOUDINARY_API_KEY,
-    folder: process.env.CLOUDINARY_FOLDER || 'arc-legacy',
+    folder: process.env.CLOUDINARY_FOLDER || 'parisutra',
     maxBytes: MAX_IMAGE_BYTES,
     formats: [...ALLOWED_IMAGE_FORMATS],
   });
@@ -185,6 +203,11 @@ router.delete('/assets/:id', authRequired, adminRequired, async (req, res, next)
     }
     const asset = await MediaAsset.findById(req.params.id);
     if (!asset) return res.status(404).json({ message: 'Media not found' });
+    // Never destroy an image that is still shown somewhere (would leave broken images on the site).
+    const usage = await imageUsage(asset.secureUrl);
+    if (usage.length) {
+      return res.status(409).json({ message: `This image is still used by: ${usage.join(', ')}. Remove it there first.` });
+    }
     if (configureCloudinary()) {
       await cloudinary.uploader.destroy(asset.publicId, { resource_type: 'image' }).catch((err) => {
         console.error('Cloudinary delete failed:', err.message);

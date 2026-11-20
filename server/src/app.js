@@ -12,6 +12,7 @@ import cmsRoutes from './routes/cms.js';
 import paymentRoutes from './routes/payments.js';
 import wholesaleRoutes from './routes/wholesale.js';
 import uploadRoutes from './routes/uploads.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const app = express();
 
@@ -47,7 +48,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use(morgan(process.env.VERCEL ? 'tiny' : 'dev'));
 
 app.get(['/api/health', '/health'], async (req, res) => {
-  const payload = { ok: true, service: 'arc-legacy-api' };
+  const payload = { ok: true, service: 'parisutra-api' };
   if (!process.env.MONGODB_URI) {
     return res.status(503).json({ ...payload, ok: false, db: 'MONGODB_URI not set' });
   }
@@ -56,7 +57,12 @@ app.get(['/api/health', '/health'], async (req, res) => {
     res.json({ ...payload, db: 'connected' });
   } catch (err) {
     console.error('Health DB check failed:', err.message);
-    res.status(503).json({ ...payload, ok: false, db: 'connection failed' });
+    const authFailed = err.code === 8000 || /bad auth|authentication failed/i.test(err.message || '');
+    res.status(503).json({
+      ...payload,
+      ok: false,
+      db: authFailed ? 'auth_failed' : 'connection failed',
+    });
   }
 });
 
@@ -80,11 +86,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/wholesale', wholesaleRoutes);
 app.use('/api/uploads', uploadRoutes);
 
-app.use((err, _req, res, _next) => {
-  console.error(err);
-  res.status(err.status || 500).json({
-    message: process.env.VERCEL ? 'Server error' : err.message || 'Server error',
-  });
-});
+app.use('/api', notFoundHandler);
+app.use(errorHandler);
 
 export default app;

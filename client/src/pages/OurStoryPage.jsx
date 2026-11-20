@@ -45,7 +45,7 @@ const PILLARS = [
 const MILESTONES = [
   { title: 'The Idea', desc: "A dream to celebrate India's rich craft heritage and make it accessible to all." },
   { title: 'Growing Together', desc: 'From a small collection to a wide range of laces, latkans, trims and embellishments.' },
-  { title: 'A Trusted Brand', desc: 'Today, ARC LEGACY is a preferred choice for designers, boutiques, tailors and DIY creators across India.' },
+  { title: 'A Trusted Brand', desc: 'Today, PARISUTRA is a preferred choice for designers, boutiques, tailors and DIY creators across India.' },
   { title: 'The Future', desc: 'We continue to innovate, expand and bring you finishing designs that celebrate tradition with a modern touch.' },
 ];
 
@@ -104,7 +104,7 @@ export default function OurStoryPage() {
           <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-maroon/80">Our Story</p>
           <h1 className="mt-3 font-serif text-4xl leading-tight text-maroon md:text-5xl">A Legacy Woven with Love</h1>
           <p className="mt-5 max-w-md text-sm leading-relaxed text-neutral-700">
-            ARC LEGACY is more than a brand — it&apos;s a celebration of India&apos;s rich textile heritage, brought to life through exquisite laces, latkans, trims and embellishments.
+            PARISUTRA is more than a brand — it&apos;s a celebration of India&apos;s rich textile heritage, brought to life through exquisite laces, latkans, trims and embellishments.
           </p>
           <a href="#journey" className="btn-primary mt-8 inline-flex text-xs tracking-widest">Our Journey →</a>
         </div>
@@ -130,7 +130,7 @@ export default function OurStoryPage() {
           <p className="text-[11px] uppercase tracking-[0.28em] text-gold">Our Beginning</p>
           <h2 className="mt-3 font-serif text-3xl text-maroon md:text-4xl">From a Passion for Craft to a Purposeful Brand</h2>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-neutral-700">
-            ARC LEGACY was born from a deep love for Indian craftsmanship and a vision to make high-quality ethnic trims and embellishments accessible to everyone. What started as a small idea has now grown into a trusted brand, serving thousands of creators across India.
+            PARISUTRA was born from a deep love for Indian craftsmanship and a vision to make high-quality ethnic trims and embellishments accessible to everyone. What started as a small idea has now grown into a trusted brand, serving thousands of creators across India.
           </p>
         </div>
         <img src="/images/product-5.jpg" alt="Craftsmanship" className="aspect-[4/3] w-full rounded-lg object-cover" />

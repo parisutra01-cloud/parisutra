@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { asyncRouter } from '../utils/asyncRouter.js';
 import { ContactMessage } from '../models/ContactMessage.js';
 import { authRequired, adminRequired } from '../middleware/auth.js';
 
-const router = Router();
+const router = asyncRouter();
 
 router.post('/', async (req, res) => {
   try {

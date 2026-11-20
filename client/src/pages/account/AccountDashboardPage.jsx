@@ -205,7 +205,7 @@ export default function AccountDashboardPage() {
                 Hello, {firstName}!
               </h2>
               <p className="mt-1 text-xs font-medium text-neutral-800 md:text-sm">
-                Welcome back to ARC LEGACY
+                Welcome back to PARISUTRA
               </p>
               <p className="mt-1 text-[11px] text-neutral-500">
                 Explore your recent orders, saved wishlist trims and account preferences.

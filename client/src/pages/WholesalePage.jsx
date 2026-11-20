@@ -252,7 +252,7 @@ export default function WholesalePage() {
         </div>
       </section>
 
-      {/* ── Why Choose ARC LEGACY Wholesale? (Maroon Banner) ── */}
+      {/* ── Why Choose PARISUTRA Wholesale? (Maroon Banner) ── */}
       <section className="relative overflow-hidden bg-maroon text-white">
         <BotanicalLineart className="pointer-events-none absolute left-0 top-0 h-full w-20 opacity-20" />
         <BotanicalLineart className="pointer-events-none absolute right-0 top-0 h-full w-20 -scale-x-100 opacity-20" />
@@ -262,7 +262,7 @@ export default function WholesalePage() {
               <h2 className="font-serif text-2xl leading-snug text-white md:text-[26px]">
                 Why Choose
                 <br />
-                ARC LEGACY Wholesale?
+                PARISUTRA Wholesale?
               </h2>
             </div>
 
@@ -546,7 +546,7 @@ export default function WholesalePage() {
                   Let&apos;s Grow Together
                 </h3>
                 <p className="mt-2 text-xs leading-relaxed text-neutral-700">
-                  Partner with ARC LEGACY and get access to our exclusive wholesale collection with
+                  Partner with PARISUTRA and get access to our exclusive wholesale collection with
                   premium quality and attractive rates.
                 </p>
                 <button

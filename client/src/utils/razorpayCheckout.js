@@ -17,7 +17,7 @@ export function openRazorpayCheckout({ keyId, amount, currency, orderId, name, e
     key: keyId,
     amount,
     currency,
-    name: 'ARC LEGACY',
+    name: 'PARISUTRA',
     description: 'Order payment',
     order_id: orderId,
     prefill: { name, email, contact: phone },

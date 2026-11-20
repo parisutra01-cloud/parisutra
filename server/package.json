@@ -6,6 +6,7 @@
     "dev": "node src/index.js",
     "start": "node src/index.js",
     "seed": "node src/seed.js",
+    "seed:catalog": "node src/seedCatalog.js",
     "seed:cms": "node src/seedCmsOnly.js"
   },
   "dependencies": {

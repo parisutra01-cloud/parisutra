@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ARC LEGACY — India's First Lace Brand</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>PARISUTRA — India's First Lace Brand</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -14,6 +14,11 @@
   </head>
   <body class="bg-cream text-neutral-800 antialiased">
     <div id="root"></div>
+    <script>
+      document.addEventListener('gesturestart', function (event) {
+        event.preventDefault();
+      });
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

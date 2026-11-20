@@ -273,7 +273,7 @@ export default function AdminCustomersPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'arc-legacy-customers.csv';
+    a.download = 'parisutra-customers.csv';
     a.click();
     URL.revokeObjectURL(url);
     showToast('Exported customers CSV successfully.');

@@ -9,9 +9,9 @@ import {
 } from './mediaOrganization.js';
 
 test('builds a category folder and tag from the configured base', () => {
-  const location = buildMediaLocation('arc-legacy', 'trims-borders');
+  const location = buildMediaLocation('parisutra', 'trims-borders');
   assert.deepEqual(location, {
-    folder: 'arc-legacy/trims-borders',
+    folder: 'parisutra/trims-borders',
     tag: 'cat_trims_borders',
   });
 });
@@ -24,15 +24,15 @@ test('rejects folder paths and duplicate-looking names', () => {
 });
 
 test('does not treat a client path as the category folder', () => {
-  assert.throws(() => buildMediaLocation('arc-legacy', '../admin'), /Invalid category/);
-  assert.equal(publicIdMatchesFolder('arc-legacy/laces/photo', 'arc-legacy/laces'), true);
-  assert.equal(publicIdMatchesFolder('arc-legacy/laces-extra/photo', 'arc-legacy/laces'), false);
-  assert.equal(publicIdMatchesFolder('arc-legacy/../laces/photo', 'arc-legacy/laces'), false);
+  assert.throws(() => buildMediaLocation('parisutra', '../admin'), /Invalid category/);
+  assert.equal(publicIdMatchesFolder('parisutra/laces/photo', 'parisutra/laces'), true);
+  assert.equal(publicIdMatchesFolder('parisutra/laces-extra/photo', 'parisutra/laces'), false);
+  assert.equal(publicIdMatchesFolder('parisutra/../laces/photo', 'parisutra/laces'), false);
 });
 
 test('accepts only this cloud secure URL', () => {
   assert.equal(
-    secureUrlMatchesCloud('https://res.cloudinary.com/demo/image/upload/v1/arc-legacy/laces/a.jpg', 'demo'),
+    secureUrlMatchesCloud('https://res.cloudinary.com/demo/image/upload/v1/parisutra/laces/a.jpg', 'demo'),
     true
   );
   assert.equal(secureUrlMatchesCloud('http://res.cloudinary.com/demo/image/upload/a.jpg', 'demo'), false);

@@ -75,7 +75,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-white/70 md:flex-row">
-          <p>© {new Date().getFullYear()} ARC LEGACY. All Rights Reserved.</p>
+          <p>© {new Date().getFullYear()} PARISUTRA. All Rights Reserved.</p>
           <div className="flex items-center gap-4">
             <span className="uppercase tracking-wider text-gold-light text-[11px] font-semibold">Follow Us</span>
             <a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-white/80 hover:text-gold-light transition" aria-label="Instagram">

@@ -287,7 +287,7 @@ export default function AdminShippedOrdersPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'arc-legacy-shipped-orders.csv';
+    a.download = 'parisutra-shipped-orders.csv';
     a.click();
     URL.revokeObjectURL(url);
     triggerToast('Shipped orders exported to CSV.');
@@ -970,7 +970,7 @@ export default function AdminShippedOrdersPage() {
               <div className="flex items-start gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#1D8852] mt-1 shrink-0" />
                 <div>
-                  <p className="font-bold text-[#2C1E21]">Dispatched from ARC Legacy Surat Hub</p>
+                  <p className="font-bold text-[#2C1E21]">Dispatched from Parisutra Surat Hub</p>
                   <p className="text-[11px] text-[#8C7076]">{trackingOrder.shippedDate}, {trackingOrder.shippedTime}</p>
                 </div>
               </div>

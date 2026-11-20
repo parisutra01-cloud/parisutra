@@ -122,7 +122,7 @@ const NOTIFICATION_ITEMS = [
   {
     id: 'n-9',
     title: 'Your Order is Confirmed',
-    desc: 'Thank you for shopping with ARC LEGACY! Order #AL12343 confirmed.',
+    desc: 'Thank you for shopping with PARISUTRA! Order #AL12343 confirmed.',
     time: '06 Sep 2026',
     unread: false,
     to: '/account/orders',
@@ -136,7 +136,7 @@ const NOTIFICATION_ITEMS = [
   },
   {
     id: 'n-10',
-    title: 'Welcome to ARC LEGACY!',
+    title: 'Welcome to PARISUTRA!',
     desc: 'Stay tuned for exclusive offers, new arrivals and crafting inspiration.',
     time: '05 Sep 2026',
     unread: false,

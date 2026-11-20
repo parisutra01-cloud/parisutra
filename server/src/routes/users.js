@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { asyncRouter } from '../utils/asyncRouter.js';
 import { User } from '../models/User.js';
 import { Product } from '../models/Product.js';
 import { authRequired } from '../middleware/auth.js';
 import { serializeUser } from '../utils/userSerializer.js';
 
-const router = Router();
+const router = asyncRouter();
 
 router.use(authRequired);
 

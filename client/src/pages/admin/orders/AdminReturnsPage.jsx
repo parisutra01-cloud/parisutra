@@ -250,7 +250,7 @@ export default function AdminReturnsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'arc-legacy-return-refunds.csv';
+    a.download = 'parisutra-return-refunds.csv';
     a.click();
     URL.revokeObjectURL(url);
     triggerToast('Return & refund requests exported to CSV.');

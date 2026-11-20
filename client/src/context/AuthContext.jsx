@@ -54,7 +54,7 @@ export function AuthProvider({ children }) {
 
   const loginWithGoogle = useCallback(async () => {
     if (!isFirebaseConfigured || !firebaseAuth) {
-      throw new Error('Google sign-in is not configured. Add Firebase keys to client/.env');
+      throw new Error('Google sign-in is not configured. Add the VITE_FIREBASE_* keys to server/.env and restart the client.');
     }
     const result = await signInWithPopup(firebaseAuth, googleAuthProvider);
     const idToken = await result.user.getIdToken();

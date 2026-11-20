@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { asyncRouter } from '../utils/asyncRouter.js';
 import { WholesaleEnquiry } from '../models/WholesaleEnquiry.js';
 import { authRequired, adminRequired } from '../middleware/auth.js';
 
-const router = Router();
+const router = asyncRouter();
 
 router.post('/enquiries', async (req, res) => {
   try {

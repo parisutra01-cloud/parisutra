@@ -246,7 +246,7 @@ export default function AdminProductReviewsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'arc-legacy-product-reviews.csv';
+    a.download = 'parisutra-product-reviews.csv';
     a.click();
     URL.revokeObjectURL(url);
     triggerToast('Product reviews exported to CSV.');
@@ -831,7 +831,7 @@ export default function AdminProductReviewsPage() {
 
               <div>
                 <label className="block text-[12px] font-semibold text-[#4A3439] mb-1">
-                  Your Public Reply from ARC LEGACY:
+                  Your Public Reply from PARISUTRA:
                 </label>
                 <textarea
                   rows={3}

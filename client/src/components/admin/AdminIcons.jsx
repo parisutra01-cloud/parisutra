@@ -1,4 +1,4 @@
-// Custom Vector Icon System for ARC LEGACY Admin Panel
+// Custom Vector Icon System for PARISUTRA Admin Panel
 // Unified 24x24 grid, 1.75px stroke weight, rounded caps & joins, minimal & purposeful geometry.
 
 export function AdminIcon({ name, size, strokeWidth = 1.75, className = '' }) {

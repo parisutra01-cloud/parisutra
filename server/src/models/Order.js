@@ -42,6 +42,21 @@ const orderSchema = new mongoose.Schema(
       pincode: String,
     },
     notes: String,
+    cancelledAt: Date,
+    cancelledBy: { type: String, enum: ['customer', 'admin'] },
+    // Durable record of stock actually reserved for this order (COD checkouts since Phase 5C/5D).
+    // Cancellation restores exactly these lines, once: restoredAt is set in the same transaction
+    // as the stock increments. Orders without reservedAt (older orders, Razorpay orders) never had
+    // their deduction recorded, so their stock is not restored automatically.
+    stockReservation: {
+      reservedAt: Date,
+      lines: {
+        type: [{ product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' }, quantity: Number, _id: false }],
+        default: undefined,
+      },
+      restoredAt: Date,
+      missingProducts: { type: [mongoose.Schema.Types.ObjectId], default: undefined },
+    },
     razorpayOrderId: String,
     razorpayPaymentId: String,
   },

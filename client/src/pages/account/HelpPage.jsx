@@ -139,7 +139,7 @@ const FAQS = [
   },
   {
     q: 'How do I contact customer support?',
-    a: 'You can reach us via Live Chat, email at support@arclegacy.in, phone at +91 98765 43210, or WhatsApp Monday to Saturday between 10:00 AM and 6:00 PM IST.',
+    a: 'You can reach us via Live Chat, email at support@parisutra.in, phone at +91 98765 43210, or WhatsApp Monday to Saturday between 10:00 AM and 6:00 PM IST.',
   },
   {
     q: 'What payment methods do you accept?',
@@ -388,10 +388,10 @@ export default function HelpPage() {
                   </div>
                 </div>
                 <a
-                  href="mailto:support@arclegacy.in"
+                  href="mailto:support@parisutra.in"
                   className="shrink-0 rounded-lg border border-[#B06A70]/60 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-[#7A1C24] transition hover:bg-[#7A1C24] hover:text-white"
                 >
-                  support@arclegacy.in
+                  support@parisutra.in
                 </a>
               </div>
 

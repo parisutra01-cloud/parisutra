@@ -917,7 +917,7 @@ export default function AdminProductReportsPage() {
                   className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#800020]"
                 >
                   <option>All Brands</option>
-                  <option>ARC LEGACY Exclusive</option>
+                  <option>PARISUTRA Exclusive</option>
                   <option>Heritage Crafts</option>
                 </select>
               </div>

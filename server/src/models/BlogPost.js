@@ -7,7 +7,7 @@ const blogPostSchema = new mongoose.Schema(
     excerpt: String,
     content: String,
     coverImage: String,
-    author: { type: String, default: 'ARC LEGACY' },
+    author: { type: String, default: 'PARISUTRA' },
     status: { type: String, enum: ['draft', 'published'], default: 'draft' },
     publishedAt: Date,
   },

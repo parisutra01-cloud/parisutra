@@ -7,8 +7,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
   // VITE_* may live in client/.env or server/.env (monorepo convenience)
-  const fromServer = loadEnv(mode, path.resolve(__dirname, '../server'), 'VITE_');
-  const fromClient = loadEnv(mode, __dirname, 'VITE_');
+  const clean = (env) =>
+    Object.fromEntries(
+      Object.entries(env).map(([key, value]) => [key, String(value).trim().replace(/^["']+|["']+$/g, '')])
+    );
+  const fromServer = clean(loadEnv(mode, path.resolve(__dirname, '../server'), 'VITE_'));
+  const fromClient = clean(loadEnv(mode, __dirname, 'VITE_'));
   const viteEnv = { ...fromServer, ...fromClient };
 
   return {

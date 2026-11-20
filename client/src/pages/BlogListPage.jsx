@@ -12,7 +12,7 @@ export default function BlogListPage() {
 
   return (
     <>
-      <PageHero title="Blogs & Articles" subtitle="Tips, trends, and stories from ARC LEGACY" breadcrumb={[{ label: 'Home', to: '/' }, { label: 'Blog' }]} />
+      <PageHero title="Blogs & Articles" subtitle="Tips, trends, and stories from PARISUTRA" breadcrumb={[{ label: 'Home', to: '/' }, { label: 'Blog' }]} />
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-3">
         {posts.map((post) => (
           <article key={post._id} className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-card">

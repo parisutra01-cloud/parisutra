@@ -24,6 +24,10 @@ export async function connectDB() {
         const { host, name } = m.connection;
         console.log(`MongoDB connected (${name} @ ${host})`);
         return m;
+      })
+      .catch((err) => {
+        cached.promise = null;
+        throw err;
       });
   }
   cached.conn = await cached.promise;

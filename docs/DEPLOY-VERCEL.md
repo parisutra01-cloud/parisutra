@@ -1,4 +1,4 @@
-# Deploy ARC LEGACY on Vercel (single project)
+# Deploy PARISUTRA on Vercel (single project)
 
 > **Split frontend + API on two Vercel projects?** Use [DEPLOY-VERCEL-SPLIT.md](./DEPLOY-VERCEL-SPLIT.md) instead.
 
@@ -19,7 +19,7 @@ For a **combined** `vercel.json`, merge root `vercel.json` (API) with client bui
 ```bash
 git init -b main
 git add .
-git commit -m "Prepare ARC LEGACY for Vercel"
+git commit -m "Prepare PARISUTRA for Vercel"
 git remote add origin https://github.com/YOUR_USER/arc_website.git
 git push -u origin main
 ```
@@ -57,7 +57,7 @@ Add these for **Production** (and **Preview** if you want previews to work):
 | `CLOUDINARY_CLOUD_NAME` | Optional | Admin uploads |
 | `CLOUDINARY_API_KEY` | Optional | |
 | `CLOUDINARY_API_SECRET` | Optional | |
-| `CLOUDINARY_FOLDER` | Optional | Base folder only, e.g. `arc-legacy`. Each upload is stored in `{CLOUDINARY_FOLDER}/{category-slug}` and tagged `cat_{slug}`. The media library filters by the category saved in MongoDB. |
+| `CLOUDINARY_FOLDER` | Optional | Base folder only, e.g. `parisutra`. Each upload is stored in `{CLOUDINARY_FOLDER}/{category-slug}` and tagged `cat_{slug}`. The media library filters by the category saved in MongoDB. |
 | `RAZORPAY_KEY_ID` | Optional | Checkout |
 | `RAZORPAY_KEY_SECRET` | Optional | |
 | `CORS_ORIGINS` | Optional | Extra origins, comma-separated |

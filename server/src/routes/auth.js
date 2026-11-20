@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { asyncRouter } from '../utils/asyncRouter.js';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { authRequired } from '../middleware/auth.js';
 import { isFirebaseAdminConfigured, verifyFirebaseIdToken } from '../config/firebase.js';
 
-const router = Router();
+const router = asyncRouter();
 
 function signToken(user) {
   return jwt.sign({ sub: user._id.toString(), role: user.role }, process.env.JWT_SECRET, {
@@ -27,6 +27,9 @@ router.post('/register', async (req, res) => {
     const { name, email, phone, password, marketingOptIn } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+    if ([name, email, password].some((v) => typeof v !== 'string')) {
+      return res.status(400).json({ message: 'Name, email, and password must be text' });
     }
     if (password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
@@ -56,8 +59,14 @@ router.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ message: 'Email and password must be text' });
+    }
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    if (!user?.password) {
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+    if (!user.password) {
       return res.status(401).json({
         message: 'This account uses Google sign-in. Please continue with Google.',
       });
@@ -85,8 +94,8 @@ router.post('/google', async (req, res) => {
 
     const decoded = await verifyFirebaseIdToken(idToken);
     const email = decoded.email?.toLowerCase();
-    if (!email) {
-      return res.status(400).json({ message: 'Google account must include an email address' });
+    if (!email || decoded.email_verified !== true) {
+      return res.status(400).json({ message: 'Google account email must be verified' });
     }
 
     const displayName = decoded.name || email.split('@')[0];

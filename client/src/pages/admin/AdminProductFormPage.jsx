@@ -1,870 +1,635 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import AdminIcon from '../../components/admin/AdminIcons.jsx';
+import { api } from '../../api/client.js';
+import { discardUploadedAsset, getUploadConfig, uploadImage } from '../../utils/cloudinaryUpload.js';
+
+const UNITS = ['meter', 'pair', 'piece', 'pack'];
+const MAX_IMAGES = 10;
+const SKU_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
+
+const EMPTY = {
+  title: '', category: '', unit: 'meter', sku: '', shortDescription: '', description: '',
+  price: '', comparePrice: '', costPrice: '', stock: '0', lowStockAlert: '10', trackStock: true,
+  material: [], colors: [], styles: [], images: [],
+  slug: '', metaTitle: '', metaDescription: '', isActive: true, isFeatured: false, isNewArrival: false,
+};
+
+const toSlug = (s) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 200);
+// While typing, keep a trailing hyphen so "foo-bar" can be typed; it is trimmed on blur and on save.
+const slugWhileTyping = (s) => s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-/, '').slice(0, 200);
+const numText = (v) => (v === undefined || v === null ? '' : String(v));
+
+function fromProduct(p) {
+  return {
+    ...EMPTY,
+    title: p.title || '',
+    category: p.category?._id || p.category || '',
+    unit: p.unit || 'meter',
+    sku: p.sku || '',
+    shortDescription: p.shortDescription || '',
+    description: p.description || '',
+    price: numText(p.price),
+    comparePrice: numText(p.comparePrice),
+    costPrice: numText(p.costPrice),
+    stock: numText(p.stock ?? 0),
+    lowStockAlert: numText(p.lowStockAlert ?? 10),
+    trackStock: p.trackStock !== false,
+    material: p.material || [],
+    colors: p.colors || [],
+    styles: p.styles || [],
+    images: (p.images || []).map((i) => ({ url: i.url, isMain: Boolean(i.isMain) })),
+    slug: p.slug || '',
+    metaTitle: p.metaTitle || '',
+    metaDescription: p.metaDescription || '',
+    isActive: p.isActive !== false,
+    isFeatured: Boolean(p.isFeatured),
+    isNewArrival: Boolean(p.isNewArrival),
+  };
+}
+
+/** Mirrors the server rules so most mistakes are caught before a round trip. */
+function validate(form) {
+  const e = {};
+  const title = form.title.trim();
+  if (!title) e.title = 'Title is required';
+  else if (title.length < 2 || title.length > 200) e.title = 'Title must be 2–200 characters';
+  if (!form.category) e.category = 'Choose a category';
+  const price = Number(form.price);
+  if (form.price === '') e.price = 'Selling price is required';
+  else if (!Number.isFinite(price) || price <= 0) e.price = 'Selling price must be greater than 0';
+  if (form.comparePrice !== '') {
+    const cp = Number(form.comparePrice);
+    if (!Number.isFinite(cp) || cp < 0) e.comparePrice = 'Compare price cannot be negative';
+    else if (cp > 0 && Number.isFinite(price) && cp < price) e.comparePrice = 'Compare price must be at least the selling price';
+  }
+  if (form.costPrice !== '' && (!Number.isFinite(Number(form.costPrice)) || Number(form.costPrice) < 0)) e.costPrice = 'Cost price cannot be negative';
+  for (const [key, label] of [['stock', 'Stock'], ['lowStockAlert', 'Low stock alert']]) {
+    const n = Number(form[key]);
+    if (form[key] === '') e[key] = `${label} is required`;
+    else if (!Number.isInteger(n) || n < 0) e[key] = `${label} must be a whole number of 0 or more`;
+  }
+  if (form.sku.trim() && !SKU_PATTERN.test(form.sku.trim())) e.sku = 'Use letters, numbers, ".", "_", "/" or "-" (max 64)';
+  return e;
+}
+
+function toPayload(form, { isActive, isEdit }) {
+  const payload = {
+    title: form.title.trim(),
+    category: form.category,
+    unit: form.unit,
+    sku: form.sku.trim(),
+    shortDescription: form.shortDescription,
+    description: form.description,
+    price: Number(form.price),
+    comparePrice: form.comparePrice === '' ? '' : Number(form.comparePrice),
+    costPrice: form.costPrice === '' ? '' : Number(form.costPrice),
+    stock: Number(form.stock),
+    lowStockAlert: Number(form.lowStockAlert),
+    trackStock: form.trackStock,
+    material: form.material,
+    colors: form.colors,
+    styles: form.styles,
+    images: form.images.map(({ url, isMain }) => ({ url, isMain })),
+    metaTitle: form.metaTitle,
+    metaDescription: form.metaDescription,
+    isActive,
+    isFeatured: form.isFeatured,
+    isNewArrival: form.isNewArrival,
+  };
+  const slug = toSlug(form.slug);
+  if (slug || isEdit) payload.slug = slug;
+  return payload;
+}
+
+const inputClass = (hasError) =>
+  `w-full px-3.5 py-2 rounded-xl border bg-[#FDFBFC] text-[12.5px] text-[#2C1E21] focus:outline-none ${hasError ? 'border-[#C92A52] focus:border-[#C92A52]' : 'border-[#E8D8DC] focus:border-[#A91D48]'}`;
+const labelClass = 'block text-[12px] font-semibold text-[#4A3439] mb-1.5';
+
+function FieldError({ name, errors }) {
+  if (!errors[name]) return null;
+  return <p id={`${name}-error`} data-testid={`error-${name}`} className="mt-1 text-[11px] font-medium text-[#C92A52]">{errors[name]}</p>;
+}
+
+function Card({ step, title, children, action }) {
+  return (
+    <section className="bg-white rounded-2xl border border-[#EFE0E4] p-5 shadow-[0_2px_12px_rgba(142,24,56,0.03)] space-y-4">
+      <div className="flex items-center justify-between gap-3 border-b border-[#F5EAEC] pb-3.5">
+        <div className="flex items-center gap-2.5">
+          <span className="w-6 h-6 rounded-full bg-[#8E1838] text-white text-[12px] font-bold flex items-center justify-center">{step}</span>
+          <h2 className="text-[15px] font-bold text-[#8E1838]">{title}</h2>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Toggle({ label, hint, checked, onChange, name }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-[12.5px] font-bold text-[#2C1E21]">{label}</p>
+        {hint && <p className="text-[11px] text-[#7A6268]">{hint}</p>}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        name={name}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${checked ? 'bg-[#8E1838]' : 'bg-[#D6C2C6]'}`}
+      >
+        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+      </button>
+    </div>
+  );
+}
+
+function TagInput({ label, name, values, onChange, placeholder, errors }) {
+  const [draft, setDraft] = useState('');
+  const add = () => {
+    const v = draft.trim();
+    if (v && !values.some((x) => x.toLowerCase() === v.toLowerCase()) && values.length < 20 && v.length <= 50) onChange([...values, v]);
+    setDraft('');
+  };
+  return (
+    <div>
+      <label className={labelClass} htmlFor={`${name}-input`}>{label}</label>
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] px-2 py-1.5">
+        {values.map((v) => (
+          <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#FDEBF1] text-[11.5px] font-medium text-[#A91D48]">
+            {v}
+            <button type="button" aria-label={`Remove ${v}`} onClick={() => onChange(values.filter((x) => x !== v))} className="text-[#A91D48] hover:text-[#C92A52] cursor-pointer">×</button>
+          </span>
+        ))}
+        <input
+          id={`${name}-input`}
+          name={name}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); add(); } }}
+          onBlur={add}
+          placeholder={values.length ? '' : placeholder}
+          className="flex-1 min-w-[90px] bg-transparent px-1 py-0.5 text-[12px] focus:outline-none"
+        />
+      </div>
+      <FieldError name={name} errors={errors} />
+    </div>
+  );
+}
 
 export default function AdminProductFormPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
 
-  // Form states initialized with realistic values from reference image
-  const [title, setTitle] = useState(isEdit ? 'Golden Zari Lace Trim' : 'Golden Zari Lace Trim');
-  const [category, setCategory] = useState('Laces');
-  const [subCategory, setSubCategory] = useState('Zari Lace');
-  const [shortDesc, setShortDesc] = useState(
-    'Premium golden zari lace trim with intricate embroidery, perfect for ethnic wear, lehengas, blouses, dupattas and DIY craft projects.'
-  );
-  const [brand, setBrand] = useState('ARC LEGACY');
-  const [sku, setSku] = useState('GT-1023');
+  const [form, setForm] = useState(EMPTY);
+  const [original, setOriginal] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [loadState, setLoadState] = useState(isEdit ? 'loading' : 'ready');
+  const [loadError, setLoadError] = useState('');
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [slugTouched, setSlugTouched] = useState(isEdit);
+  const [uploadConfig, setUploadConfig] = useState({ enabled: false });
+  const [uploading, setUploading] = useState(null);
+  const [imageError, setImageError] = useState('');
+  const sessionUploads = useRef(new Map());
+  const fileInput = useRef(null);
+  const toastTimer = useRef();
 
-  // Images state (strictly using client public images library)
-  const [images, setImages] = useState([
-    { id: 1, url: '/images/product-1.jpg', isMain: true },
-    { id: 2, url: '/images/product-4.jpg', isMain: false },
-    { id: 3, url: '/images/product-2.jpg', isMain: false },
-    { id: 4, url: '/images/product-8.jpg', isMain: false },
-  ]);
+  const showToast = useCallback((message, type = 'success') => {
+    clearTimeout(toastTimer.current);
+    setToast({ message, type });
+    toastTimer.current = setTimeout(() => setToast(null), 5000);
+  }, []);
 
-  // Pricing & Inventory
-  const [sellingPrice, setSellingPrice] = useState('180');
-  const [comparePrice, setComparePrice] = useState('250');
-  const [costPrice, setCostPrice] = useState('120');
-  const [taxGst, setTaxGst] = useState('GST 12%');
-  const [stockQuantity, setStockQuantity] = useState('42');
-  const [lowStockAlert, setLowStockAlert] = useState('10');
-  const [trackStock, setTrackStock] = useState(true);
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  // Variations
-  const [hasVariations, setHasVariations] = useState(true);
-  const [widthOptions, setWidthOptions] = useState(['1 cm', '2 cm', '3 cm']);
-  const [colorOptions, setColorOptions] = useState(['Gold', 'Antique Gold', 'Rose Gold']);
-  const [newWidth, setNewWidth] = useState('');
-  const [newColor, setNewColor] = useState('');
-  const [showAddWidth, setShowAddWidth] = useState(false);
-  const [showAddColor, setShowAddColor] = useState(false);
+  // Images uploaded in this visit but never saved are removed from Cloudinary when leaving the page.
+  useEffect(() => () => {
+    for (const assetId of sessionUploads.current.keys()) discardUploadedAsset(assetId).catch(() => {});
+    sessionUploads.current.clear();
+  }, []);
 
-  // SEO & Visibility
-  const [metaTitle, setMetaTitle] = useState(
-    'Golden Zari Lace Trim | Premium Lace for Ethnic Wear | ARC LEGACY'
-  );
-  const [metaDescription, setMetaDescription] = useState(
-    'Shop premium golden zari lace trim for lehengas, blouses, dupattas and DIY craft projects. High-quality trims at best prices. ARC LEGACY.'
-  );
-  const [urlSlug, setUrlSlug] = useState('golden-zari-lace-trim');
-  const [productStatus, setProductStatus] = useState('Active');
-  const [showOnWebsite, setShowOnWebsite] = useState(true);
-  const [featuredProduct, setFeaturedProduct] = useState(false);
-  const [includeInNewArrivals, setIncludeInNewArrivals] = useState(true);
+  useEffect(() => {
+    getUploadConfig().then(setUploadConfig);
+    api('/categories/manage').then((d) => setCategories(d.categories || [])).catch(() => setCategories([]));
+  }, []);
 
-  // Specifications rich text editor representation
-  const [specContent, setSpecContent] = useState({
-    description:
-      'Add a detailed product description here. You can include material, design, usage, and other important information about the product. This will help customers understand the product better.',
-    features: [
-      'Premium quality zari lace trim',
-      'Intricate and elegant design',
-      'Perfect for lehengas, blouses, dupattas and ethnic wear',
-      'Durable and easy to stitch',
-      'Ideal for designers, boutiques and DIY craft projects',
-    ],
-    whatsIncluded: '1 Meter Zari Lace Trim (as per selected length)',
-    whyLoveIt:
-      'Adds a royal and traditional touch to your creations with fine craftsmanship and timeless design.',
+  const loadProduct = useCallback(() => {
+    if (!isEdit) return;
+    setLoadState('loading');
+    setLoadError('');
+    api(`/products/manage/${id}`)
+      .then((d) => {
+        setForm(fromProduct(d.product));
+        setOriginal(d.product);
+        setLoadState('ready');
+      })
+      .catch((err) => {
+        setLoadState(err.status === 404 || err.status === 400 ? 'notfound' : 'error');
+        setLoadError(err.message || 'Could not load the product.');
+      });
+  }, [id, isEdit]);
+
+  useEffect(() => { loadProduct(); }, [loadProduct]);
+
+  const set = (key) => (value) => {
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      if (key === 'title' && !slugTouched) next.slug = toSlug(value);
+      return next;
+    });
+    if (errors[key]) setErrors(({ [key]: _, ...rest }) => rest);
+  };
+  const bind = (key) => ({
+    name: key,
+    id: key,
+    value: form[key],
+    onChange: (e) => set(key)(e.target.value),
+    'aria-invalid': Boolean(errors[key]) || undefined,
+    'aria-describedby': errors[key] ? `${key}-error` : undefined,
   });
 
-  const [toastMsg, setToastMsg] = useState('');
-
-  const triggerToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3200);
-  };
-
-  const removeImage = (imgId) => {
-    setImages((prev) => {
-      const filtered = prev.filter((img) => img.id !== imgId);
-      if (filtered.length > 0 && !filtered.some((img) => img.isMain)) {
-        filtered[0].isMain = true;
+  const handleFiles = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setImageError('');
+    if (!form.category) {
+      setImageError('Choose the product category first: images are stored in the category folder.');
+      return;
+    }
+    const room = MAX_IMAGES - form.images.length;
+    if (room <= 0) {
+      setImageError(`A product can have at most ${MAX_IMAGES} images.`);
+      return;
+    }
+    const queue = files.slice(0, room);
+    const problems = files.length > room ? [`Only ${room} more image${room === 1 ? '' : 's'} can be added.`] : [];
+    for (let i = 0; i < queue.length; i += 1) {
+      setUploading({ current: i + 1, total: queue.length });
+      try {
+        const asset = await uploadImage(queue[i], form.category, uploadConfig);
+        sessionUploads.current.set(asset._id, asset.secureUrl);
+        setForm((f) => ({
+          ...f,
+          images: f.images.some((img) => img.url === asset.secureUrl)
+            ? f.images
+            : [...f.images, { url: asset.secureUrl, isMain: f.images.length === 0, assetId: asset._id }],
+        }));
+      } catch (err) {
+        problems.push(err.message || `Upload of "${queue[i].name}" failed.`);
       }
-      return filtered;
+    }
+    setUploading(null);
+    if (problems.length) setImageError(problems.join(' '));
+  };
+
+  const removeImage = (url) => {
+    const img = form.images.find((i) => i.url === url);
+    setForm((f) => {
+      const rest = f.images.filter((i) => i.url !== url);
+      if (rest.length && !rest.some((i) => i.isMain)) rest[0] = { ...rest[0], isMain: true };
+      return { ...f, images: rest };
     });
+    // Never-saved uploads are deleted right away; images already saved on the product stay in the media library.
+    if (img?.assetId && sessionUploads.current.has(img.assetId)) {
+      sessionUploads.current.delete(img.assetId);
+      discardUploadedAsset(img.assetId).catch(() => {});
+    }
   };
 
-  const addImageFromLibrary = () => {
-    const available = [
-      '/images/product-3.jpg',
-      '/images/product-5.jpg',
-      '/images/product-6.jpg',
-      '/images/product-7.jpg',
-      '/images/product-9.jpg',
-      '/images/product-10.jpg',
-      '/images/product-11.jpg',
-      '/images/product-12.jpg',
-    ];
-    const unused = available.filter((url) => !images.some((img) => img.url === url));
-    const nextUrl = unused[0] || '/images/product-3.jpg';
-    setImages((prev) => [
-      ...prev,
-      { id: Date.now(), url: nextUrl, isMain: prev.length === 0 },
-    ]);
-    triggerToast('Added image from product library.');
+  const makeMain = (url) => setForm((f) => ({ ...f, images: f.images.map((i) => ({ ...i, isMain: i.url === url })) }));
+
+  const save = async (isActive) => {
+    if (saving || uploading) return;
+    const clientErrors = validate(form);
+    setErrors(clientErrors);
+    if (Object.keys(clientErrors).length) {
+      showToast('Please fix the highlighted fields.', 'error');
+      document.querySelector(`[name="${Object.keys(clientErrors)[0]}"]`)?.focus();
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload = toPayload(form, { isActive, isEdit });
+      const { product } = await api(isEdit ? `/products/${id}` : '/products', {
+        method: isEdit ? 'PUT' : 'POST',
+        body: JSON.stringify(payload),
+      });
+      sessionUploads.current.clear();
+      const verb = isEdit ? 'updated' : isActive ? 'published' : 'saved as a draft';
+      navigate('/admin/products', { state: { flash: `Product “${product.title}” ${verb}.` } });
+    } catch (err) {
+      if (err.errors) {
+        setErrors(err.errors);
+        document.querySelector(`[name="${Object.keys(err.errors)[0]}"]`)?.focus();
+      }
+      showToast(err.message || 'Could not save the product.', 'error');
+      setSaving(false);
+    }
   };
 
-  const handleSave = (publish = true) => {
-    triggerToast(
-      publish
-        ? `Product "${title}" saved and published successfully!`
-        : `Product "${title}" saved as draft.`
+  const onSubmit = (e) => {
+    e.preventDefault();
+    save(isEdit ? form.isActive : true);
+  };
+
+  const cancel = () => navigate('/admin/products');
+
+  if (loadState === 'loading') {
+    return (
+      <div className="space-y-4" aria-busy="true">
+        <div className="h-10 w-64 rounded-xl bg-[#F7EEF0] animate-pulse" />
+        <div className="h-64 rounded-2xl bg-[#F7EEF0] animate-pulse" />
+        <p className="text-[12.5px] text-[#7A6268]">Loading product…</p>
+      </div>
     );
-    setTimeout(() => {
-      navigate('/admin/products');
-    }, 1200);
-  };
+  }
+  if (loadState === 'notfound' || loadState === 'error') {
+    return (
+      <div className="rounded-2xl border border-[#EFE0E4] bg-white p-8 text-center">
+        <h1 className="text-[18px] font-bold text-[#8E1838]">{loadState === 'notfound' ? 'Product not found' : 'Could not load this product'}</h1>
+        <p className="mt-2 text-[12.5px] text-[#7A6268]" role="alert">{loadError}</p>
+        <div className="mt-5 flex justify-center gap-2">
+          {loadState === 'error' && <button type="button" onClick={loadProduct} className="px-4 py-2 rounded-xl border border-[#E6D3D8] text-[#8E1838] text-[12.5px] font-semibold cursor-pointer">Try again</button>}
+          <Link to="/admin/products" className="px-4 py-2 rounded-xl bg-[#8E1838] text-white text-[12.5px] font-semibold">Back to products</Link>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedCategory = categories.find((c) => c._id === form.category);
+  const uploadDisabled = !uploadConfig.enabled || Boolean(uploading) || form.images.length >= MAX_IMAGES;
 
   return (
-    <div className="space-y-5 pb-12">
-      {/* Toast Notification */}
-      {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#2C1E21] text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-[13px] font-medium">
-          <span className="w-2 h-2 rounded-full bg-[#249A62]" />
-          {toastMsg}
+    <form onSubmit={onSubmit} noValidate className="space-y-5 pb-12" data-testid="product-form">
+      {toast && (
+        <div role="status" aria-live="polite" data-testid="toast" className={`fixed bottom-6 right-6 z-50 max-w-sm px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-[13px] font-medium text-white ${toast.type === 'error' ? 'bg-[#9B1C3A]' : 'bg-[#2C1E21]'}`}>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${toast.type === 'error' ? 'bg-[#FFB4C2]' : 'bg-[#249A62]'}`} />
+          {toast.message}
         </div>
       )}
 
-      {/* Header & Breadcrumb */}
+      {/* Header & breadcrumb */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5 text-[12px] text-[#8C7076] mb-1.5">
+            <Link to="/admin/products" className="hover:text-[#A91D48]">Products</Link>
             <AdminIcon name="chevron-right" size={12} className="text-[#B89CA3]" />
-            <Link to="/admin/products" className="hover:text-[#A91D48] transition-colors">
-              Products
-            </Link>
-            <AdminIcon name="chevron-right" size={12} className="text-[#B89CA3]" />
-            <span className="text-[#4A3439] font-medium">
-              {isEdit ? 'Edit Product' : 'Add New Product'}
-            </span>
+            <span className="text-[#4A3439] font-medium">{isEdit ? 'Edit Product' : 'Add New Product'}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FDF2F5] border border-[#F3DCE2] flex items-center justify-center text-[#A91D48] shrink-0">
-              <AdminIcon name="mandala" size={22} />
-            </div>
-            <div>
-              <h1
-                className="text-[24px] font-bold text-[#8E1838] leading-tight"
-                style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-              >
-                {isEdit ? 'Edit Product' : 'Add New Product'}
-              </h1>
-              <p className="text-[12.5px] text-[#7A6268] mt-0.5">
-                Fill in the details below to list a new product in your store.
-              </p>
-            </div>
-          </div>
+          <h1 className="text-[24px] font-bold text-[#8E1838] leading-tight" style={{ fontFamily: "'Playfair Display', Georgia, serif" }}>
+            {isEdit ? 'Edit Product' : 'Add New Product'}
+          </h1>
+          <p className="text-[12.5px] text-[#7A6268] mt-0.5">
+            {isEdit ? `Last updated ${new Date(original?.updatedAt).toLocaleString('en-IN')}` : 'Fill in the details below to list a new product in your store.'}
+          </p>
         </div>
-
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => handleSave(false)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E6D3D8] text-[#8E1838] text-[12.5px] font-semibold hover:bg-[#FDF5F7] transition-colors shadow-xs cursor-pointer"
-          >
-            <AdminIcon name="draft" size={15} className="text-[#A91D48]" />
-            Save as Draft
+          <button type="button" onClick={cancel} disabled={saving} className="px-4 py-2.5 rounded-xl bg-white border border-[#E6D3D8] text-[#4A3439] text-[12.5px] font-semibold hover:bg-[#FDF5F7] cursor-pointer">
+            Cancel
           </button>
-          <button
-            type="button"
-            onClick={() => triggerToast('Preview mode enabled in separate tab.')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E6D3D8] text-[#8E1838] text-[12.5px] font-semibold hover:bg-[#FDF5F7] transition-colors shadow-xs cursor-pointer"
-          >
-            <AdminIcon name="eye" size={15} className="text-[#A91D48]" />
-            Preview
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSave(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#8E1838] text-white text-[12.5px] font-semibold hover:bg-[#77132E] transition-colors shadow-xs cursor-pointer"
-          >
-            <AdminIcon name="paperplane" size={15} />
-            Save &amp; Publish
-          </button>
+          {isEdit && original?.isActive !== false && (
+            <a href={`/product/${original.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E6D3D8] text-[#8E1838] text-[12.5px] font-semibold hover:bg-[#FDF5F7]">
+              <AdminIcon name="eye" size={15} className="text-[#A91D48]" />
+              View in store
+            </a>
+          )}
+          {isEdit ? (
+            <button type="submit" disabled={saving || Boolean(uploading)} data-testid="save-product" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#8E1838] text-white text-[12.5px] font-semibold hover:bg-[#77132E] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+              <AdminIcon name="paperplane" size={15} />
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          ) : (
+            <>
+              <button type="button" onClick={() => save(false)} disabled={saving || Boolean(uploading)} data-testid="save-draft" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#E6D3D8] text-[#8E1838] text-[12.5px] font-semibold hover:bg-[#FDF5F7] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                <AdminIcon name="draft" size={15} className="text-[#A91D48]" />
+                Save as Draft
+              </button>
+              <button type="submit" disabled={saving || Boolean(uploading)} data-testid="save-product" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#8E1838] text-white text-[12.5px] font-semibold hover:bg-[#77132E] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
+                <AdminIcon name="paperplane" size={15} />
+                {saving ? 'Saving…' : 'Save & Publish'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Main Two-Column Layout (Left 7 cols + Right 5 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Column: Cards 1, 2, 3 */}
-        <div className="lg:col-span-7 xl:col-span-7 space-y-5">
-          {/* Card 1: Basic Information */}
-          <div className="bg-white rounded-2xl border border-[#EFE0E4] p-5 shadow-[0_2px_12px_rgba(142,24,56,0.03)] space-y-4">
-            <div className="flex items-center gap-2.5 border-b border-[#F5EAEc] pb-3.5">
-              <span className="w-6 h-6 rounded-full bg-[#8E1838] text-white text-[12px] font-bold flex items-center justify-center">
-                1
-              </span>
-              <h2 className="text-[15px] font-bold text-[#8E1838]">
-                Basic Information
-              </h2>
-            </div>
-
+        <div className="lg:col-span-7 space-y-5">
+          <Card step={1} title="Basic Information">
             <div>
-              <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                Product Title <span className="text-[#C92A52]">*</span>
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter product title..."
-                className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12.5px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
-              />
+              <label className={labelClass} htmlFor="title">Product Title <span className="text-[#C92A52]">*</span></label>
+              <input type="text" maxLength={200} placeholder="e.g. Golden Zari Lace Trim" className={inputClass(errors.title)} {...bind('title')} />
+              <FieldError name="title" errors={errors} />
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Category <span className="text-[#C92A52]">*</span>
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-white text-[12.5px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48] cursor-pointer"
-                >
-                  <option value="Laces">Laces</option>
-                  <option value="Latkans">Latkans</option>
-                  <option value="Pom Pom Trims">Pom Pom Trims</option>
-                  <option value="Gota Patti">Gota Patti</option>
-                  <option value="Embellishments">Embellishments</option>
-                  <option value="Trims & Borders">Trims &amp; Borders</option>
+                <label className={labelClass} htmlFor="category">Category <span className="text-[#C92A52]">*</span></label>
+                <select className={`${inputClass(errors.category)} cursor-pointer bg-white`} {...bind('category')}>
+                  <option value="">Choose a category…</option>
+                  {/* New assignments need an active category; a product's saved inactive category stays selectable. */}
+                  {categories
+                    .filter((c) => c.isActive !== false || c._id === (original?.category?._id || original?.category))
+                    .map((c) => <option key={c._id} value={c._id}>{c.name}{c.isActive === false ? ' (inactive)' : ''}</option>)}
                 </select>
+                <FieldError name="category" errors={errors} />
               </div>
-
               <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Sub Category
-                </label>
-                <select
-                  value={subCategory}
-                  onChange={(e) => setSubCategory(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-white text-[12.5px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48] cursor-pointer"
-                >
-                  <option value="Zari Lace">Zari Lace</option>
-                  <option value="Velvet Lace">Velvet Lace</option>
-                  <option value="Cotton Lace">Cotton Lace</option>
-                  <option value="Embroidered Border">Embroidered Border</option>
-                  <option value="Bridal Latkan">Bridal Latkan</option>
+                <label className={labelClass} htmlFor="unit">Selling Unit <span className="text-[#C92A52]">*</span></label>
+                <select className={`${inputClass(errors.unit)} cursor-pointer bg-white capitalize`} {...bind('unit')}>
+                  {UNITS.map((u) => <option key={u} value={u}>Per {u}</option>)}
                 </select>
+                <FieldError name="unit" errors={errors} />
               </div>
             </div>
-
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[12px] font-semibold text-[#4A3439]">
-                  Short Description <span className="text-[#C92A52]">*</span>
-                </label>
-                <span className="text-[11px] text-[#8C7076]">{shortDesc.length}/500</span>
+                <label className="text-[12px] font-semibold text-[#4A3439]" htmlFor="shortDescription">Short Description</label>
+                <span className="text-[11px] text-[#8C7076]">{form.shortDescription.length}/500</span>
               </div>
-              <textarea
-                rows={3}
-                value={shortDesc}
-                maxLength={500}
-                onChange={(e) => setShortDesc(e.target.value)}
-                placeholder="Brief summary of the product..."
-                className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12.5px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48] resize-none leading-relaxed"
-              />
+              <textarea rows={3} maxLength={500} placeholder="Brief summary shown on product cards…" className={`${inputClass(errors.shortDescription)} resize-none leading-relaxed`} {...bind('shortDescription')} />
+              <FieldError name="shortDescription" errors={errors} />
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Brand (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  placeholder="e.g. ARC LEGACY"
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12.5px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  SKU / Product Code <span className="text-[#C92A52]">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder="e.g. GT-1023"
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12.5px] font-mono text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
-                />
-              </div>
+            <div>
+              <label className={labelClass} htmlFor="sku">SKU / Product Code</label>
+              <input type="text" maxLength={64} placeholder="e.g. GT-1023" className={`${inputClass(errors.sku)} font-mono`} {...bind('sku')} />
+              <p className="mt-1 text-[10.5px] text-[#8C7076]">Must be unique across all products.</p>
+              <FieldError name="sku" errors={errors} />
             </div>
-          </div>
+          </Card>
 
-          {/* Card 2: Product Images */}
-          <div className="bg-white rounded-2xl border border-[#EFE0E4] p-5 shadow-[0_2px_12px_rgba(142,24,56,0.03)] space-y-4">
-            <div className="flex items-center justify-between border-b border-[#F5EAEc] pb-3.5">
-              <div className="flex items-center gap-2.5">
-                <span className="w-6 h-6 rounded-full bg-[#8E1838] text-white text-[12px] font-bold flex items-center justify-center">
-                  2
-                </span>
-                <h2 className="text-[15px] font-bold text-[#8E1838]">
-                  Product Images
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={addImageFromLibrary}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E6D3D8] bg-[#FDF7F8] text-[#8E1838] text-[11.5px] font-semibold hover:bg-[#FCE8EE] transition-colors cursor-pointer"
-              >
+          <Card
+            step={2}
+            title="Product Images"
+            action={
+              <button type="button" onClick={() => fileInput.current?.click()} disabled={uploadDisabled} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E6D3D8] bg-[#FDF7F8] text-[#8E1838] text-[11.5px] font-semibold hover:bg-[#FCE8EE] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                 <AdminIcon name="upload" size={13} className="text-[#A91D48]" />
-                Upload Multiple Images
+                Upload images
               </button>
-            </div>
+            }
+          >
+            <input
+              ref={fileInput}
+              type="file"
+              name="images"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+              multiple
+              hidden
+              data-testid="image-input"
+              onChange={(e) => { const files = e.target.files; handleFiles(files).finally(() => { e.target.value = ''; }); }}
+            />
+            {!uploadConfig.enabled && (
+              <p className="text-[11.5px] text-[#7A6268]">Image upload is not configured on the server (Cloudinary). Existing images can still be reordered or removed.</p>
+            )}
+            {uploadConfig.enabled && !form.category && (
+              <p className="text-[11.5px] text-[#7A6268]">Choose a category first: images are stored in that category&apos;s folder.</p>
+            )}
+            {uploading && <p className="text-[11.5px] font-medium text-[#8E1838]" role="status">Uploading image {uploading.current} of {uploading.total}…</p>}
+            {(imageError || errors.images) && <p className="text-[11.5px] font-medium text-[#C92A52]" role="alert" data-testid="error-images">{imageError || errors.images}</p>}
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 items-center">
-              {/* Dotted Upload Main Image Box */}
-              <div
-                onClick={addImageFromLibrary}
-                className="col-span-2 sm:col-span-2 border-2 border-dashed border-[#E5CCD2] rounded-xl p-4 text-center bg-[#FDFBFC] hover:bg-[#FDF5F7] transition-colors cursor-pointer flex flex-col items-center justify-center min-h-[110px]"
-              >
-                <div className="w-7 h-7 rounded-full border border-[#C92A52] text-[#C92A52] flex items-center justify-center mb-1.5">
-                  <AdminIcon name="plus" size={14} />
-                </div>
-                <p className="text-[11.5px] font-bold text-[#8E1838]">Upload Main Image</p>
-                <p className="text-[10px] text-[#7A6268] mt-0.5 leading-tight">
-                  Click to upload or drag and drop<br />JPG, PNG, WebP (Max 5MB)<br />
-                  <span className="text-[#9A8187]">Recommended: 1000 × 1000 px</span>
-                </p>
-              </div>
-
-              {/* Uploaded Thumbnails */}
-              {images.map((img, index) => (
-                <div
-                  key={img.id}
-                  className="relative group rounded-xl overflow-hidden border border-[#E9D8DC] aspect-square bg-[#FBF7F8]"
-                >
-                  <img
-                    src={img.url}
-                    alt={`Product ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                  {img.isMain && (
-                    <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-[#8E1838] text-white text-[9.5px] font-bold shadow-xs">
-                      Main
-                    </span>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3" data-testid="image-grid">
+              {form.images.map((img, index) => (
+                <div key={img.url} className="relative rounded-xl overflow-hidden border border-[#E9D8DC] aspect-square bg-[#FBF7F8]" data-testid="image-tile">
+                  <img src={img.url} alt={`Product image ${index + 1}`} className="w-full h-full object-cover" />
+                  {img.isMain ? (
+                    <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-[#8E1838] text-white text-[9.5px] font-bold">Main</span>
+                  ) : (
+                    <button type="button" onClick={() => makeMain(img.url)} className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-white/90 text-[#8E1838] text-[9.5px] font-bold cursor-pointer">Make main</button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => removeImage(img.id)}
-                    className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white/90 text-[#C92A52] hover:bg-[#C92A52] hover:text-white flex items-center justify-center text-[10px] font-bold shadow-xs transition-colors cursor-pointer"
-                  >
+                  <button type="button" aria-label={`Remove image ${index + 1}`} onClick={() => removeImage(img.url)} className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-white/90 text-[#C92A52] hover:bg-[#C92A52] hover:text-white flex items-center justify-center text-[11px] font-bold cursor-pointer">
                     ×
                   </button>
                 </div>
               ))}
-
-              {/* Add More Images Square */}
-              <div
-                onClick={addImageFromLibrary}
-                className="border-2 border-dashed border-[#E5CCD2] rounded-xl aspect-square flex flex-col items-center justify-center text-[#8E1838] hover:bg-[#FDF5F7] transition-colors cursor-pointer"
-              >
-                <AdminIcon name="plus" size={16} />
-                <span className="text-[10.5px] font-bold mt-1">Add More Images</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Product Details & Specifications */}
-          <div className="bg-white rounded-2xl border border-[#EFE0E4] p-5 shadow-[0_2px_12px_rgba(142,24,56,0.03)] space-y-4">
-            <div className="flex items-center gap-2.5 border-b border-[#F5EAEc] pb-3.5">
-              <span className="w-6 h-6 rounded-full bg-[#8E1838] text-white text-[12px] font-bold flex items-center justify-center">
-                3
-              </span>
-              <h2 className="text-[15px] font-bold text-[#8E1838]">
-                Product Details &amp; Specifications
-              </h2>
-            </div>
-
-            {/* Rich Text Toolbar */}
-            <div className="border border-[#E8D8DC] rounded-xl overflow-hidden">
-              <div className="bg-[#FAF2F4] border-b border-[#E8D8DC] px-3 py-2 flex flex-wrap items-center gap-2 text-[#4A3439]">
-                <select className="px-2 py-1 text-[11.5px] font-semibold bg-white rounded border border-[#E5D2D6] focus:outline-none">
-                  <option>Paragraph</option>
-                  <option>Heading 1</option>
-                  <option>Heading 2</option>
-                  <option>Heading 3</option>
-                </select>
-                <div className="h-4 w-[1px] bg-[#E0CED2]" />
-                <button type="button" className="p-1 hover:bg-white rounded font-bold text-[12px]">
-                  <AdminIcon name="bold" size={13} />
-                </button>
-                <button type="button" className="p-1 hover:bg-white rounded italic text-[12px]">
-                  <AdminIcon name="italic" size={13} />
-                </button>
-                <button type="button" className="p-1 hover:bg-white rounded underline text-[12px]">
-                  <AdminIcon name="underline" size={13} />
-                </button>
-                <button type="button" className="p-1 hover:bg-white rounded line-through text-[12px]">
-                  <AdminIcon name="strikethrough" size={13} />
-                </button>
-                <div className="h-4 w-[1px] bg-[#E0CED2]" />
-                <button type="button" className="p-1 hover:bg-white rounded text-[12px]">
-                  <AdminIcon name="list-bullet" size={13} />
-                </button>
-                <button type="button" className="p-1 hover:bg-white rounded text-[12px]">
-                  <AdminIcon name="list-ordered" size={13} />
-                </button>
-                <button type="button" className="p-1 hover:bg-white rounded text-[12px]">
-                  <AdminIcon name="link" size={13} />
-                </button>
-                <button type="button" className="p-1 hover:bg-white rounded text-[12px]">
-                  <AdminIcon name="align-left" size={13} />
-                </button>
-                <button type="button" className="p-1 hover:bg-white rounded text-[12px]">
-                  <AdminIcon name="image" size={13} />
-                </button>
-              </div>
-
-              {/* Editor Workspace Content */}
-              <div className="p-4 space-y-3.5 text-[12.5px] text-[#2C1E21] bg-white leading-relaxed">
-                <div>
-                  <h4 className="font-bold text-[#8E1838] mb-1">Description</h4>
-                  <p className="text-[#5E474D]">{specContent.description}</p>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-[#8E1838] mb-1">Features (Bullet Points)</h4>
-                  <ul className="list-disc pl-5 space-y-1 text-[#5E474D]">
-                    {specContent.features.map((feat, idx) => (
-                      <li key={idx}>{feat}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-[#8E1838] mb-1">What's Included</h4>
-                  <p className="text-[#5E474D]">• {specContent.whatsIncluded}</p>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-[#8E1838] mb-1">Why You'll Love It</h4>
-                  <p className="text-[#5E474D]">• {specContent.whyLoveIt}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Cards 4, 5, 6 */}
-        <div className="lg:col-span-5 xl:col-span-5 space-y-5">
-          {/* Card 4: Pricing & Inventory */}
-          <div className="bg-white rounded-2xl border border-[#EFE0E4] p-5 shadow-[0_2px_12px_rgba(142,24,56,0.03)] space-y-4">
-            <div className="flex items-center gap-2.5 border-b border-[#F5EAEc] pb-3.5">
-              <span className="w-6 h-6 rounded-full bg-[#8E1838] text-white text-[12px] font-bold flex items-center justify-center">
-                4
-              </span>
-              <h2 className="text-[15px] font-bold text-[#8E1838]">
-                Pricing &amp; Inventory
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3.5">
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Selling Price <span className="text-[#C92A52]">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A6268] text-[12.5px] font-semibold">
-                    ₹
-                  </span>
-                  <input
-                    type="number"
-                    value={sellingPrice}
-                    onChange={(e) => setSellingPrice(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12.5px] font-semibold text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Compare Price (MRP)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A6268] text-[12.5px] font-semibold">
-                    ₹
-                  </span>
-                  <input
-                    type="number"
-                    value={comparePrice}
-                    onChange={(e) => setComparePrice(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12.5px] font-semibold text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3.5">
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Cost Price (Optional)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A6268] text-[12.5px] font-semibold">
-                    ₹
-                  </span>
-                  <input
-                    type="number"
-                    value={costPrice}
-                    onChange={(e) => setCostPrice(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12.5px] font-semibold text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Tax (GST)
-                </label>
-                <select
-                  value={taxGst}
-                  onChange={(e) => setTaxGst(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-[#E8D8DC] bg-white text-[12.5px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48] cursor-pointer"
+              {form.images.length < MAX_IMAGES && (
+                <button
+                  type="button"
+                  onClick={() => fileInput.current?.click()}
+                  disabled={uploadDisabled}
+                  className="border-2 border-dashed border-[#E5CCD2] rounded-xl aspect-square flex flex-col items-center justify-center text-[#8E1838] hover:bg-[#FDF5F7] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="GST 0%">GST 0%</option>
-                  <option value="GST 5%">GST 5%</option>
-                  <option value="GST 12%">GST 12%</option>
-                  <option value="GST 18%">GST 18%</option>
-                </select>
-              </div>
+                  <AdminIcon name="plus" size={16} />
+                  <span className="text-[10.5px] font-bold mt-1 text-center px-1">{form.images.length ? 'Add more' : 'Upload main image'}</span>
+                </button>
+              )}
             </div>
+            <p className="text-[10.5px] text-[#8C7076]">JPG, PNG, WEBP, GIF or AVIF · up to 5 MB each · max {MAX_IMAGES} images.</p>
+          </Card>
 
-            <div className="grid grid-cols-2 gap-3.5">
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Stock Quantity <span className="text-[#C92A52]">*</span>
-                </label>
-                <input
-                  type="number"
-                  value={stockQuantity}
-                  onChange={(e) => setStockQuantity(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12.5px] font-semibold text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Low Stock Alert
-                </label>
-                <input
-                  type="number"
-                  value={lowStockAlert}
-                  onChange={(e) => setLowStockAlert(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12.5px] font-semibold text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
-                />
-              </div>
-            </div>
-
-            {/* Track Stock Toggle */}
-            <div className="flex items-center justify-between pt-2">
-              <div>
-                <p className="text-[12.5px] font-bold text-[#2C1E21]">Track Stock</p>
-                <p className="text-[11px] text-[#7A6268]">Monitor inventory for this product</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setTrackStock(!trackStock)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  trackStock ? 'bg-[#8E1838]' : 'bg-[#D6C2C6]'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    trackStock ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-
-          {/* Card 5: Variations (If Applicable) */}
-          <div className="bg-white rounded-2xl border border-[#EFE0E4] p-5 shadow-[0_2px_12px_rgba(142,24,56,0.03)] space-y-4">
-            <div className="flex items-center justify-between border-b border-[#F5EAEc] pb-3.5">
-              <div className="flex items-center gap-2.5">
-                <span className="w-6 h-6 rounded-full bg-[#8E1838] text-white text-[12px] font-bold flex items-center justify-center">
-                  5
-                </span>
-                <h2 className="text-[15px] font-bold text-[#8E1838]">
-                  Variations (If Applicable)
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setHasVariations(!hasVariations)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  hasVariations ? 'bg-[#8E1838]' : 'bg-[#D6C2C6]'
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    hasVariations ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-
-            {hasVariations && (
-              <div className="space-y-4 pt-1">
-                {/* Attribute 1: Width */}
-                <div>
-                  <label className="block text-[11.5px] font-semibold text-[#4A3439] mb-1.5">
-                    Attribute 1
-                  </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select className="px-3 py-1.5 rounded-lg border border-[#E8D8DC] bg-white text-[12px] font-semibold text-[#4A3439] focus:outline-none">
-                      <option>Width</option>
-                      <option>Length</option>
-                      <option>Material</option>
-                    </select>
-
-                    {widthOptions.map((opt) => (
-                      <span
-                        key={opt}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#FDF2F5] border border-[#F3DCE2] text-[#8E1838] text-[11.5px] font-semibold"
-                      >
-                        {opt}
-                        <button
-                          type="button"
-                          onClick={() => setWidthOptions(widthOptions.filter((w) => w !== opt))}
-                          className="text-[#C92A52] hover:text-[#8E1838] font-bold cursor-pointer"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-
-                    {showAddWidth ? (
-                      <div className="inline-flex items-center gap-1">
-                        <input
-                          type="text"
-                          value={newWidth}
-                          onChange={(e) => setNewWidth(e.target.value)}
-                          placeholder="e.g. 4 cm"
-                          className="w-20 px-2 py-1 text-[11px] rounded border border-[#A91D48] focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (newWidth.trim()) {
-                              setWidthOptions([...widthOptions, newWidth.trim()]);
-                              setNewWidth('');
-                              setShowAddWidth(false);
-                            }
-                          }}
-                          className="text-[11px] px-2 py-1 bg-[#8E1838] text-white rounded font-bold cursor-pointer"
-                        >
-                          Add
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddWidth(true)}
-                        className="text-[11px] text-[#A91D48] font-bold hover:underline cursor-pointer"
-                      >
-                        + Add Option
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Attribute 2: Color */}
-                <div>
-                  <label className="block text-[11.5px] font-semibold text-[#4A3439] mb-1.5">
-                    Attribute 2
-                  </label>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select className="px-3 py-1.5 rounded-lg border border-[#E8D8DC] bg-white text-[12px] font-semibold text-[#4A3439] focus:outline-none">
-                      <option>Color</option>
-                      <option>Finish</option>
-                      <option>Pattern</option>
-                    </select>
-
-                    {colorOptions.map((opt) => (
-                      <span
-                        key={opt}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#FDF2F5] border border-[#F3DCE2] text-[#8E1838] text-[11.5px] font-semibold"
-                      >
-                        {opt}
-                        <button
-                          type="button"
-                          onClick={() => setColorOptions(colorOptions.filter((c) => c !== opt))}
-                          className="text-[#C92A52] hover:text-[#8E1838] font-bold cursor-pointer"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-
-                    {showAddColor ? (
-                      <div className="inline-flex items-center gap-1">
-                        <input
-                          type="text"
-                          value={newColor}
-                          onChange={(e) => setNewColor(e.target.value)}
-                          placeholder="e.g. Silver"
-                          className="w-20 px-2 py-1 text-[11px] rounded border border-[#A91D48] focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (newColor.trim()) {
-                              setColorOptions([...colorOptions, newColor.trim()]);
-                              setNewColor('');
-                              setShowAddColor(false);
-                            }
-                          }}
-                          className="text-[11px] px-2 py-1 bg-[#8E1838] text-white rounded font-bold cursor-pointer"
-                        >
-                          Add
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddColor(true)}
-                        className="text-[11px] text-[#A91D48] font-bold hover:underline cursor-pointer"
-                      >
-                        + Add Option
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Card 6: SEO & Visibility */}
-          <div className="bg-white rounded-2xl border border-[#EFE0E4] p-5 shadow-[0_2px_12px_rgba(142,24,56,0.03)] space-y-4">
-            <div className="flex items-center gap-2.5 border-b border-[#F5EAEc] pb-3.5">
-              <span className="w-6 h-6 rounded-full bg-[#8E1838] text-white text-[12px] font-bold flex items-center justify-center">
-                6
-              </span>
-              <h2 className="text-[15px] font-bold text-[#8E1838]">
-                SEO &amp; Visibility
-              </h2>
-            </div>
-
+          <Card step={3} title="Product Details">
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[12px] font-semibold text-[#4A3439]">
-                  Meta Title
-                </label>
-                <span className="text-[11px] text-[#8C7076]">{metaTitle.length}/60</span>
+                <label className="text-[12px] font-semibold text-[#4A3439]" htmlFor="description">Full Description</label>
+                <span className="text-[11px] text-[#8C7076]">{form.description.length}/20000</span>
               </div>
+              <textarea rows={8} maxLength={20000} placeholder="Material, dimensions, care instructions, what’s included…" className={`${inputClass(errors.description)} leading-relaxed`} {...bind('description')} />
+              <FieldError name="description" errors={errors} />
+            </div>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-5 space-y-5">
+          <Card step={4} title="Pricing & Inventory">
+            <div className="grid grid-cols-2 gap-3.5">
+              {[
+                ['price', 'Selling Price', true],
+                ['comparePrice', 'Compare Price (MRP)', false],
+                ['costPrice', 'Cost Price (private)', false],
+              ].map(([key, label, required]) => (
+                <div key={key}>
+                  <label className={labelClass} htmlFor={key}>{label} {required && <span className="text-[#C92A52]">*</span>}</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7A6268] text-[12.5px] font-semibold">₹</span>
+                    <input type="number" inputMode="decimal" min="0" step="0.01" className={`${inputClass(errors[key])} pl-7 font-semibold`} {...bind(key)} />
+                  </div>
+                  <FieldError name={key} errors={errors} />
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3.5">
+              <div>
+                <label className={labelClass} htmlFor="stock">Stock Quantity <span className="text-[#C92A52]">*</span></label>
+                <input type="number" inputMode="numeric" min="0" step="1" className={`${inputClass(errors.stock)} font-semibold`} {...bind('stock')} />
+                <FieldError name="stock" errors={errors} />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="lowStockAlert">Low Stock Alert</label>
+                <input type="number" inputMode="numeric" min="0" step="1" className={`${inputClass(errors.lowStockAlert)} font-semibold`} {...bind('lowStockAlert')} />
+                <FieldError name="lowStockAlert" errors={errors} />
+              </div>
+            </div>
+            <Toggle label="Track Stock" hint="Prevent orders when stock runs out" name="trackStock" checked={form.trackStock} onChange={set('trackStock')} />
+          </Card>
+
+          <Card step={5} title="Attributes (store filters)">
+            <TagInput label="Material" name="material" values={form.material} onChange={set('material')} placeholder="e.g. Zari, Velvet — press Enter" errors={errors} />
+            <TagInput label="Colours" name="colors" values={form.colors} onChange={set('colors')} placeholder="e.g. Gold, Maroon — press Enter" errors={errors} />
+            <TagInput label="Styles" name="styles" values={form.styles} onChange={set('styles')} placeholder="e.g. Bridal, Traditional — press Enter" errors={errors} />
+          </Card>
+
+          <Card step={6} title="SEO & Visibility">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[12px] font-semibold text-[#4A3439]" htmlFor="metaTitle">Meta Title</label>
+                <span className="text-[11px] text-[#8C7076]">{form.metaTitle.length}/60</span>
+              </div>
+              <input type="text" maxLength={120} className={inputClass(errors.metaTitle)} {...bind('metaTitle')} />
+              <FieldError name="metaTitle" errors={errors} />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[12px] font-semibold text-[#4A3439]" htmlFor="metaDescription">Meta Description</label>
+                <span className="text-[11px] text-[#8C7076]">{form.metaDescription.length}/160</span>
+              </div>
+              <textarea rows={2} maxLength={320} className={`${inputClass(errors.metaDescription)} resize-none`} {...bind('metaDescription')} />
+              <FieldError name="metaDescription" errors={errors} />
+            </div>
+            <div>
+              <label className={labelClass} htmlFor="slug">URL Slug</label>
               <input
                 type="text"
-                value={metaTitle}
-                maxLength={70}
-                onChange={(e) => setMetaTitle(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
+                maxLength={200}
+                placeholder="generated from the title"
+                className={inputClass(errors.slug)}
+                {...bind('slug')}
+                onChange={(e) => { setSlugTouched(true); set('slug')(slugWhileTyping(e.target.value)); }}
+                onBlur={() => set('slug')(toSlug(form.slug))}
               />
+              <p className="text-[10px] text-[#8C7076] mt-1 truncate">https://parisutra.in/product/{form.slug || '…'}</p>
+              <FieldError name="slug" errors={errors} />
             </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-[12px] font-semibold text-[#4A3439]">
-                  Meta Description
-                </label>
-                <span className="text-[11px] text-[#8C7076]">{metaDescription.length}/160</span>
-              </div>
-              <textarea
-                rows={2}
-                value={metaDescription}
-                maxLength={160}
-                onChange={(e) => setMetaDescription(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48] resize-none leading-relaxed"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {isEdit && (
               <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  URL Slug
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={urlSlug}
-                    onChange={(e) => setUrlSlug(e.target.value)}
-                    className="w-full pl-3.5 pr-8 py-2 rounded-xl border border-[#E8D8DC] bg-[#FDFBFC] text-[12px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(`https://arclegacy.in/product/${urlSlug}`);
-                      triggerToast('URL copied to clipboard.');
-                    }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8C7076] hover:text-[#8E1838] cursor-pointer"
-                  >
-                    <AdminIcon name="copy" size={13} />
-                  </button>
-                </div>
-                <p className="text-[10px] text-[#8C7076] mt-1 truncate">
-                  https://arclegacy.in/product/{urlSlug}
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-semibold text-[#4A3439] mb-1.5">
-                  Product Status
-                </label>
+                <label className={labelClass} htmlFor="status">Product Status</label>
                 <select
-                  value={productStatus}
-                  onChange={(e) => setProductStatus(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-[#E8D8DC] bg-white text-[12px] text-[#2C1E21] focus:outline-none focus:border-[#A91D48] cursor-pointer"
+                  id="status"
+                  name="isActive"
+                  value={form.isActive ? 'active' : 'inactive'}
+                  onChange={(e) => set('isActive')(e.target.value === 'active')}
+                  className={`${inputClass(false)} bg-white cursor-pointer`}
                 >
-                  <option value="Active">Active</option>
-                  <option value="Draft">Draft</option>
-                  <option value="Archived">Archived</option>
+                  <option value="active">Active (visible in store)</option>
+                  <option value="inactive">Inactive (hidden from store)</option>
                 </select>
               </div>
+            )}
+            <div className="space-y-3 pt-1">
+              <Toggle label="Featured product" hint="Shown in the homepage featured row" name="isFeatured" checked={form.isFeatured} onChange={set('isFeatured')} />
+              <Toggle label="Include in New Arrivals" name="isNewArrival" checked={form.isNewArrival} onChange={set('isNewArrival')} />
             </div>
-
-            <div className="pt-2 space-y-2 text-[12px] text-[#4A3439]">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showOnWebsite}
-                  onChange={(e) => setShowOnWebsite(e.target.checked)}
-                  className="rounded border-[#D5BEC4] text-[#A91D48] focus:ring-0"
-                />
-                <span className="font-medium">Show on Website</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeInNewArrivals}
-                  onChange={(e) => setIncludeInNewArrivals(e.target.checked)}
-                  className="rounded border-[#D5BEC4] text-[#A91D48] focus:ring-0"
-                />
-                <span className="font-medium">Include in New Arrivals</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={featuredProduct}
-                  onChange={(e) => setFeaturedProduct(e.target.checked)}
-                  className="rounded border-[#D5BEC4] text-[#A91D48] focus:ring-0"
-                />
-                <span className="font-medium">Featured Product</span>
-              </label>
-            </div>
-          </div>
+            {selectedCategory?.isActive === false && (
+              <p className="text-[11px] text-[#B4233F]">Note: the selected category is inactive, so this product won&apos;t appear on its category page.</p>
+            )}
+          </Card>
         </div>
       </div>
-    </div>
+    </form>
   );
 }

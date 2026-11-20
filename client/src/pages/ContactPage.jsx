@@ -68,12 +68,12 @@ export default function ContactPage() {
             <h3 className="font-serif text-lg text-maroon">Contact details</h3>
             <ul className="mt-4 space-y-2 text-sm">
               <li><strong>Phone / WhatsApp:</strong> +91 98765 43210</li>
-              <li><strong>Email:</strong> support@arclegacy.in</li>
+              <li><strong>Email:</strong> support@parisutra.in</li>
               <li><strong>Office:</strong> Surat, Gujarat — Textile Market</li>
               <li><strong>Hours:</strong> Mon–Sat, 9 AM – 6 PM</li>
             </ul>
           </div>
-          <img src="/images/product-8.jpg" alt="ARC LEGACY trims" className="rounded-xl object-cover w-full max-h-64" />
+          <img src="/images/product-8.jpg" alt="PARISUTRA trims" className="rounded-xl object-cover w-full max-h-64" />
         </div>
       </div>
       <FaqAccordion faqs={faqs} />

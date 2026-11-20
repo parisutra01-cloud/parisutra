@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import BrandLogo from '../BrandLogo.jsx';
 import { AdminIcon } from './AdminIcons.jsx';
@@ -48,7 +48,7 @@ const CONTENT_SUBLINKS = [
   { to: '/admin/content/banners', label: 'Banners' },
   { to: '/admin/content/homepage', label: 'Collection Pages' },
   { to: '/admin/content/blogs', label: 'Blogs & Articles' },
-  { to: '/admin/content/announcements', label: 'Announcements' },
+  { to: '/admin/content/announcements', label: 'Top banner' },
   { to: '/admin/content/faqs', label: 'FAQs' },
   { to: '/admin/media', label: 'Media Library' },
 ];
@@ -62,8 +62,35 @@ const REPORTS_SUBLINKS = [
   { to: '/admin/reports/export', label: 'Export Reports' },
 ];
 
+/**
+ * Route guard for /admin/*. It only decides what to render; all layout state lives in AdminShell,
+ * so the shell's hooks run in the same order on every render (React Rules of Hooks). Previously the
+ * auth early-returns sat before the layout's useState/useEffect calls, so the render after the session
+ * check finished called more hooks than the first one and React unmounted the app (blank page on
+ * refresh / direct link).
+ */
 export default function AdminLayout() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div role="status" aria-live="polite" className="flex min-h-screen items-center justify-center bg-[#FDF8F6] text-sm text-[#6E565C]">
+        Checking access…
+      </div>
+    );
+  }
+  if (!user) {
+    // Remember the requested admin page so the login page can return to it.
+    const from = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to="/login" replace state={{ from }} />;
+  }
+  if (user.role !== 'admin') return <Navigate to="/" replace />;
+
+  return <AdminShell user={user} />;
+}
+
+function AdminShell({ user }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
@@ -218,6 +245,38 @@ export default function AdminLayout() {
                 ? 'Organize and manage your media files easily for better content.'
                 : 'Create engaging wholesale content to inform and attract customers.';
 
+  // Mobile/tablet navigation drawer (below the lg breakpoint the sidebar is off-canvas).
+  const [navOpen, setNavOpen] = useState(false);
+  const closeNavButton = useRef(null);
+
+  // Close the drawer after navigating.
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  // While open: Escape closes it, the page behind does not scroll, and focus moves into the drawer.
+  useEffect(() => {
+    if (!navOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setNavOpen(false); };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKey);
+    closeNavButton.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [navOpen]);
+
+  // If the window grows to desktop width while the drawer is open, release the scroll lock.
+  useEffect(() => {
+    const desktop = window.matchMedia?.('(min-width: 1024px)');
+    if (!desktop) return undefined;
+    const onChange = (e) => { if (e.matches) setNavOpen(false); };
+    desktop.addEventListener?.('change', onChange);
+    return () => desktop.removeEventListener?.('change', onChange);
+  }, []);
+
   const handleProductsHeaderClick = () => {
     if (!isProductsSection) {
       setProductsOpen(true);
@@ -265,9 +324,44 @@ export default function AdminLayout() {
 
   return (
     <div className="flex min-h-screen bg-[#FDF8F6] text-[#1E3A5F]">
-      {/* Left Admin Sidebar */}
-      <aside className="flex w-[248px] shrink-0 flex-col justify-between border-r border-[#F0DFE2] bg-[#FAF0EE] px-3.5 py-5">
+      {/* Backdrop behind the mobile/tablet drawer; tapping it closes the menu. */}
+      {navOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-[#1E3A5F]/40 lg:hidden"
+          onClick={() => setNavOpen(false)}
+          aria-hidden="true"
+          data-testid="admin-nav-backdrop"
+        />
+      )}
+
+      {/* Left Admin Sidebar: static column on desktop (lg+), off-canvas drawer below lg. */}
+      <aside
+        id="admin-sidebar"
+        aria-label="Admin navigation"
+        data-testid="admin-sidebar"
+        data-open={navOpen ? 'true' : 'false'}
+        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] shrink-0 flex-col justify-between overflow-y-auto border-r border-[#F0DFE2] bg-[#FAF0EE] px-3.5 py-5 shadow-xl transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 lg:overflow-visible lg:shadow-none lg:transition-none ${
+          // Closed drawer: off-screen and invisible (not focusable); always visible from lg up.
+          navOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible'
+        }`}
+      >
         <div>
+          {/* Close button (drawer only) */}
+          <div className="mb-2 flex justify-end lg:hidden">
+            <button
+              ref={closeNavButton}
+              type="button"
+              onClick={() => setNavOpen(false)}
+              aria-label="Close menu"
+              data-testid="admin-nav-close"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-[#1E3A5F] hover:bg-[#F5E4E6] cursor-pointer"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+
           {/* Brand Logo */}
           <div className="mb-5 flex justify-center">
             <BrandLogo to="/admin" size="admin" />
@@ -648,9 +742,24 @@ export default function AdminLayout() {
       {/* Main Right Workspace */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top Bar */}
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[#EFE3E4] bg-[#FDF9F8] px-6 py-3">
-          {/* Global Search Input */}
-          <div className="flex w-full max-w-md items-center gap-2.5 rounded-xl border border-[#EAE2E0] bg-[#F4F1F0] px-3.5 py-2">
+        <header className="flex flex-wrap items-center justify-between gap-x-2 gap-y-2.5 border-b border-[#EFE3E4] bg-[#FDF9F8] px-3 py-3 sm:gap-4 sm:px-6">
+          {/* Menu toggle (below lg, where the sidebar is a drawer) */}
+          <button
+            type="button"
+            onClick={() => setNavOpen(true)}
+            aria-label="Open menu"
+            aria-controls="admin-sidebar"
+            aria-expanded={navOpen}
+            data-testid="admin-nav-toggle"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#EAE2E0] bg-white text-[#1E3A5F] hover:bg-[#F5E4E6] cursor-pointer lg:hidden"
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+
+          {/* Global Search Input: own full-width row on phones, inline from sm up. */}
+          <div className="order-last flex w-full min-w-0 items-center gap-2.5 rounded-xl border border-[#EAE2E0] bg-[#F4F1F0] px-3.5 py-2 sm:order-none sm:w-auto sm:flex-1 sm:max-w-xs lg:w-full lg:flex-none lg:max-w-md">
             <AdminIcon name="search" className="h-4 w-4 text-[#2A476E]" />
             <input
               type="text"
@@ -662,13 +771,14 @@ export default function AdminLayout() {
           </div>
 
           {/* Right Utilities */}
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-1.5 sm:gap-4">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 rounded-xl border border-[#E5B8C2] bg-[#FCEEEF] px-4 py-2 text-xs font-semibold text-[#B01634] transition hover:bg-[#F8DCE0]"
+              aria-label="View Store"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#E5B8C2] bg-[#FCEEEF] px-2.5 py-2 text-xs font-semibold text-[#B01634] transition hover:bg-[#F8DCE0] sm:px-4"
             >
               <AdminIcon name="eye" className="h-4 w-4" />
-              <span>View Store</span>
+              <span className="hidden sm:inline">View Store</span>
             </Link>
 
             <Link
@@ -682,23 +792,23 @@ export default function AdminLayout() {
               </span>
             </Link>
 
-            <div className="flex items-center gap-2.5 pl-1">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#D84367] text-xs font-bold text-white">
+            <div className="flex min-w-0 items-center gap-2.5 pl-1">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#D84367] text-xs font-bold text-white">
                 AS
               </div>
               <div className="hidden text-left sm:block">
                 <p className="text-xs font-semibold leading-tight text-[#1E3A5F]">
                   {user?.name || 'Admin'}
                 </p>
-                <p className="text-[10px] text-[#64748B]">ARC LEGACY</p>
+                <p className="text-[10px] text-[#64748B]">PARISUTRA</p>
               </div>
-              <AdminIcon name="chevron-down" className="h-3.5 w-3.5 text-[#64748B]" />
+              <AdminIcon name="chevron-down" className="hidden h-3.5 w-3.5 text-[#64748B] sm:block" />
             </div>
           </div>
         </header>
 
         {/* Page Body */}
-        <main className="flex-1 overflow-x-hidden p-6">
+        <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6">
           <Outlet context={{ globalSearch, setGlobalSearch }} />
         </main>
       </div>

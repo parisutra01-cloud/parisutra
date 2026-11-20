@@ -314,7 +314,7 @@ const sampleProducts = [
     image: '/images/product-7.jpg',
   },
   {
-    title: 'Red Bridal Fabric Latkan',
+    title: 'Red Bridal Beaded Latkan',
     categorySlug: 'latkans',
     price: 220,
     unit: 'pair',
@@ -483,7 +483,7 @@ async function seed() {
 
   await Promise.all([Order.deleteMany({}), Product.deleteMany({}), Category.deleteMany({})]);
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@arclegacy.in';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@parisutra.in';
   const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'Admin@12345';
 
   let admin = await User.findOne({ email: adminEmail });
@@ -509,19 +509,25 @@ async function seed() {
   }
   console.log('Categories seeded');
 
+  const usedSlugs = new Set();
   for (const p of sampleProducts) {
-    const slug = slugify(p.title);
+    let slug = slugify(p.title);
+    if (usedSlugs.has(slug)) {
+      slug = `${slug}-${Math.floor(100 + Math.random() * 900)}`;
+    }
+    usedSlugs.add(slug);
+
     await Product.create({
       title: p.title,
       slug,
       sku: p.sku,
       category: categoryMap[p.categorySlug],
-      shortDescription: `Premium ${p.title.toLowerCase()} from ARC LEGACY.`,
+      shortDescription: `Premium ${p.title.toLowerCase()} from PARISUTRA.`,
       description: `<p>Handcrafted trim for ethnic wear, home décor, and boutique collections.</p>`,
       images: [{ url: p.image, isMain: true }],
       price: p.price,
       comparePrice: p.comparePrice,
-      unit: p.unit,
+      unit: (p.unit || 'meter').toLowerCase(),
       stock: p.stock ?? 42,
       material: p.material,
       colors: p.colors,

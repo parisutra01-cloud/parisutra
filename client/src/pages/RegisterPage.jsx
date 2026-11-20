@@ -192,7 +192,7 @@ export default function RegisterPage() {
             Create Your Account
           </h1>
           <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
-            Join ARC LEGACY and explore a world of exquisite laces, trims and embellishments.
+            Join PARISUTRA and explore a world of exquisite laces, trims and embellishments.
           </p>
         </div>
 

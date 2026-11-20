@@ -1,4 +1,4 @@
-# ARC LEGACY E-commerce (MERN)
+# PARISUTRA E-commerce (MERN)
 
 Premium laces & trims storefront with admin panel — Phase 1 (retail core).
 

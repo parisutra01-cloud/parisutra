@@ -18,7 +18,11 @@ export async function api(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.message || 'Request failed');
+    const error = new Error(data.message || 'Request failed');
+    error.status = res.status;
+    // Per-field validation messages from the API, e.g. { price: 'price must be greater than 0' }
+    error.errors = data.errors && typeof data.errors === 'object' ? data.errors : null;
+    throw error;
   }
   return data;
 }

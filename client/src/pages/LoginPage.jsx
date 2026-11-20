@@ -94,13 +94,22 @@ export default function LoginPage() {
   const location = useLocation();
   const from = location.state?.from || '/account';
 
+  // Admins return to the admin page they originally opened (set by AdminLayout); customers are never
+  // sent into /admin. Only same-site paths are accepted.
+  const destinationFor = (user) => {
+    const safeFrom = typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') ? from : '/account';
+    const isAdminPath = /^\/admin(\/|$|\?|#)/.test(safeFrom);
+    if (user.role === 'admin') return isAdminPath ? safeFrom : '/admin';
+    return isAdminPath ? '/account' : safeFrom;
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setBusy(true);
     try {
       const user = await login(email, password);
-      navigate(user.role === 'admin' ? '/admin' : from);
+      navigate(destinationFor(user));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -113,7 +122,7 @@ export default function LoginPage() {
     setBusy(true);
     try {
       const user = await loginWithGoogle();
-      navigate(user.role === 'admin' ? '/admin' : from);
+      navigate(destinationFor(user));
     } catch (err) {
       setError(err.message || 'Google sign-in failed');
     } finally {
@@ -160,7 +169,7 @@ export default function LoginPage() {
             Welcome Back
           </h1>
           <p className="mt-2 text-xs leading-relaxed text-neutral-600 sm:text-sm">
-            Sign in to your ARC LEGACY account to manage your orders, wishlist and saved addresses.
+            Sign in to your PARISUTRA account to manage your orders, wishlist and saved addresses.
           </p>
         </div>
 

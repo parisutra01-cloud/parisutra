@@ -83,26 +83,27 @@ export default function HomePage() {
       </section>
 
       {/* Lifestyle promo banner */}
-      <section className="relative mx-4 mb-4 overflow-hidden rounded-sm md:mx-auto md:max-w-7xl">
-        <img
-          src={promo?.imageUrl || '/images/product-4.jpg'}
-          alt=""
-          className="aspect-[21/9] w-full object-cover md:aspect-[3/1]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-cream/90 via-cream/50 to-transparent" />
-        <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-14">
-          <p className="text-xs uppercase tracking-[0.25em] text-maroon/80">
+      <section className="mx-4 mb-8 overflow-hidden rounded-sm bg-cream md:relative md:mx-auto md:mb-4 md:max-w-7xl">
+        <div className="relative h-56 overflow-hidden sm:h-64 md:aspect-[3/1] md:h-auto">
+          <img
+            src={promo?.imageUrl || '/images/product-4.jpg'}
+            alt=""
+            className="absolute inset-y-0 left-0 h-full w-[168%] max-w-none object-cover object-left md:inset-0 md:w-full md:object-[30%_center]"
+          />
+        </div>
+        <div className="bg-cream px-5 pb-6 pt-5 md:absolute md:inset-0 md:flex md:flex-col md:justify-center md:bg-gradient-to-r md:from-cream/90 md:via-cream/50 md:to-transparent md:px-14 md:py-0">
+          <p className="text-[10px] uppercase tracking-[0.25em] text-maroon/80 md:text-xs">
             {promo?.subtitle || 'Celebrate Creativity'}
           </p>
-          <h2 className="mt-2 max-w-md font-serif text-3xl leading-tight text-maroon md:text-4xl">
+          <h2 className="mt-2 max-w-md font-serif text-[1.7rem] leading-tight text-maroon sm:text-3xl md:text-4xl">
             {promo?.title || 'Traditional Trims for Modern Designs'}
           </h2>
-          <p className="mt-3 max-w-md text-sm text-neutral-700">
+          <p className="mt-2.5 max-w-md text-sm leading-relaxed text-neutral-700">
             Perfect for lehengas, blouses, dupattas, home décor and more.
           </p>
           <Link
             to={promo?.ctaLink || '/category/trims-borders'}
-            className="btn-primary mt-6 w-fit text-xs inline-flex items-center gap-1.5"
+            className="btn-primary mt-5 w-fit text-xs inline-flex items-center gap-1.5 md:mt-6"
           >
             <span>{promo?.ctaLabel || 'Explore Collection'}</span>
             <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">

@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { asyncRouter } from '../utils/asyncRouter.js';
 import { Banner } from '../models/Banner.js';
 import { Announcement } from '../models/Announcement.js';
 import { Faq } from '../models/Faq.js';
@@ -8,7 +8,7 @@ import { authRequired, adminRequired } from '../middleware/auth.js';
 import { publishedContentFilter, activeAnnouncementFilter } from '../utils/cmsPublish.js';
 import { slugify } from '../utils/slugify.js';
 
-const router = Router();
+const router = asyncRouter();
 
 // ——— Public ———
 router.get('/public/homepage', async (_req, res) => {
@@ -77,7 +77,8 @@ router.put('/banners/:id', ...admin, async (req, res) => {
   res.json({ item });
 });
 router.delete('/banners/:id', ...admin, async (req, res) => {
-  await Banner.findByIdAndDelete(req.params.id);
+  const deleted = await Banner.findByIdAndDelete(req.params.id);
+  if (!deleted) return res.status(404).json({ message: 'Not found' });
   res.json({ ok: true });
 });
 
@@ -93,7 +94,8 @@ router.put('/announcements/:id', ...admin, async (req, res) => {
   res.json({ item });
 });
 router.delete('/announcements/:id', ...admin, async (req, res) => {
-  await Announcement.findByIdAndDelete(req.params.id);
+  const deleted = await Announcement.findByIdAndDelete(req.params.id);
+  if (!deleted) return res.status(404).json({ message: 'Not found' });
   res.json({ ok: true });
 });
 
@@ -109,7 +111,8 @@ router.put('/faqs/:id', ...admin, async (req, res) => {
   res.json({ item });
 });
 router.delete('/faqs/:id', ...admin, async (req, res) => {
-  await Faq.findByIdAndDelete(req.params.id);
+  const deleted = await Faq.findByIdAndDelete(req.params.id);
+  if (!deleted) return res.status(404).json({ message: 'Not found' });
   res.json({ ok: true });
 });
 
@@ -131,7 +134,7 @@ router.put('/homepage-sections/:key', ...admin, async (req, res) => {
 router.get('/blogs', ...admin, (req, res) => crudList(BlogPost, { createdAt: -1 }, res));
 router.post('/blogs', ...admin, async (req, res) => {
   const data = req.body;
-  if (!data.slug) data.slug = slugify(data.title);
+  if (!data.slug && typeof data.title === 'string') data.slug = slugify(data.title);
   const item = await BlogPost.create(data);
   res.status(201).json({ item });
 });
@@ -141,7 +144,8 @@ router.put('/blogs/:id', ...admin, async (req, res) => {
   res.json({ item });
 });
 router.delete('/blogs/:id', ...admin, async (req, res) => {
-  await BlogPost.findByIdAndDelete(req.params.id);
+  const deleted = await BlogPost.findByIdAndDelete(req.params.id);
+  if (!deleted) return res.status(404).json({ message: 'Not found' });
   res.json({ ok: true });
 });
 

@@ -25,7 +25,7 @@ export function assertSafeSlug(slug) {
 
 export function buildMediaLocation(baseFolder, slug) {
   assertSafeSlug(slug);
-  const base = String(baseFolder || 'arc-legacy').replace(/^\/+|\/+$/g, '');
+  const base = String(baseFolder || 'parisutra').replace(/^\/+|\/+$/g, '');
   if (!base || base.includes('..') || !/^[a-zA-Z0-9/_-]+$/.test(base)) {
     const error = new Error('Invalid Cloudinary folder configuration');
     error.status = 500;

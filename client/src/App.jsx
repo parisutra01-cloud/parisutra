@@ -40,11 +40,7 @@ import AdminMarketingReportsPage from './pages/admin/reports/AdminMarketingRepor
 import AdminProductReportsPage from './pages/admin/reports/AdminProductReportsPage.jsx';
 import AdminReportsOverviewPage from './pages/admin/reports/AdminReportsOverviewPage.jsx';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage.jsx';
-import AdminPendingOrdersPage from './pages/admin/orders/AdminPendingOrdersPage.jsx';
-import AdminProcessingOrdersPage from './pages/admin/orders/AdminProcessingOrdersPage.jsx';
-import AdminShippedOrdersPage from './pages/admin/orders/AdminShippedOrdersPage.jsx';
-import AdminDeliveredOrdersPage from './pages/admin/orders/AdminDeliveredOrdersPage.jsx';
-import AdminCancelledOrdersPage from './pages/admin/orders/AdminCancelledOrdersPage.jsx';
+import AdminOrderDetailPage from './pages/admin/AdminOrderDetailPage.jsx';
 import AdminReturnsPage from './pages/admin/orders/AdminReturnsPage.jsx';
 import AdminContentHub from './pages/admin/cms/AdminContentHub.jsx';
 import AdminBannersPage from './pages/admin/cms/AdminBannersPage.jsx';
@@ -116,13 +112,15 @@ export default function App() {
         <Route path="products/bulk-upload" element={<AdminProductsPage />} />
         <Route path="products/inventory" element={<AdminInventoryPage />} />
         <Route path="products/reviews" element={<AdminProductReviewsPage />} />
-        <Route path="orders" element={<AdminOrdersPage />} />
-        <Route path="orders/pending" element={<AdminPendingOrdersPage />} />
-        <Route path="orders/processing" element={<AdminProcessingOrdersPage />} />
-        <Route path="orders/shipped" element={<AdminShippedOrdersPage />} />
-        <Route path="orders/delivered" element={<AdminDeliveredOrdersPage />} />
-        <Route path="orders/cancelled" element={<AdminCancelledOrdersPage />} />
+        <Route path="orders" element={<AdminOrdersPage key="all" />} />
+        {/* Status views use the real order list with a fixed status (Phase 5F). */}
+        <Route path="orders/pending" element={<AdminOrdersPage key="pending" presetStatus="pending" />} />
+        <Route path="orders/processing" element={<AdminOrdersPage key="processing" presetStatus="processing" />} />
+        <Route path="orders/shipped" element={<AdminOrdersPage key="shipped" presetStatus="shipped" />} />
+        <Route path="orders/delivered" element={<AdminOrdersPage key="delivered" presetStatus="delivered" />} />
+        <Route path="orders/cancelled" element={<AdminOrdersPage key="cancelled" presetStatus="cancelled" />} />
         <Route path="orders/returns" element={<AdminReturnsPage />} />
+        <Route path="orders/:id" element={<AdminOrderDetailPage />} />
         <Route path="customers" element={<AdminCustomersPage />} />
         <Route path="customers/groups" element={<AdminCustomerGroupsPage />} />
         <Route path="customers/reviews" element={<AdminCustomerReviewsPage />} />
