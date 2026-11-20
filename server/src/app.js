@@ -24,10 +24,22 @@ const extraOrigins = (process.env.CORS_ORIGINS || '')
   .filter(Boolean);
 
 const allowedOrigins = new Set([clientUrl, 'http://localhost:5173', 'http://127.0.0.1:5173', vercelUrl, ...extraOrigins].filter(Boolean));
+if (clientUrl) {
+  if (clientUrl.startsWith('https://www.')) {
+    allowedOrigins.add(clientUrl.replace('https://www.', 'https://'));
+  } else if (clientUrl.startsWith('https://')) {
+    allowedOrigins.add(clientUrl.replace('https://', 'https://www.'));
+  }
+}
 
 const corsOptions = {
   origin(origin, callback) {
     if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    // Allow parisutra.com, www.parisutra.com, or any subdomain
+    if (/^https:\/\/(?:[a-zA-Z0-9-]+\.)*parisutra\.com$/.test(origin)) {
       callback(null, true);
       return;
     }
