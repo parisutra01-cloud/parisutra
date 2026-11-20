@@ -2,10 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install",
   "buildCommand": "mkdir -p public",
-  "outputDirectory": "public",
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api" }],
   "functions": {
-    "api/index.js": {
+    "index.js": {
+      "maxDuration": 10
+    },
+    "public/index.js": {
       "maxDuration": 10
     }
   }

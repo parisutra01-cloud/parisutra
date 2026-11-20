@@ -67,8 +67,17 @@ export function parseStockAdjustment(body) {
 export function parseStockSet(body) {
   checkShape(body, ['quantity', 'expectedStock', 'reason']);
   const quantity = wholeNumber(body.quantity, 'quantity', { min: 0, max: MAX_STOCK });
-  if (typeof body.expectedStock !== 'number' || !Number.isFinite(body.expectedStock)) {
+  return { quantity, expectedStock: parseExpectedStock(body.expectedStock), reason: reason(body.reason) };
+}
+
+/**
+ * The stock value the admin saw (compare-and-set guard). Shared by the exact-count endpoint and the
+ * product edit form (PUT /products/:id, Phase 5G.3). Any finite JSON number; strings, null, objects
+ * and operators are rejected.
+ */
+export function parseExpectedStock(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new StockInputError('expectedStock must be the stock quantity you saw (a number)', { expectedStock: 'invalid' });
   }
-  return { quantity, expectedStock: body.expectedStock, reason: reason(body.reason) };
+  return value;
 }

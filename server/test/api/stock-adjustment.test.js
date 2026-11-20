@@ -295,10 +295,14 @@ describe('Manual stock adjustments', { skip: ctx.skipReason }, () => {
   });
 
   test('SA-16 control: the old absolute product update loses changes that the new operations keep', async () => {
+    // The old absolute write is reproduced directly ($set stock), because since Phase 5G.3 the product
+    // update refuses stock without expectedStock (asserted below).
+    const absolute = (n) => P().updateOne({ _id: id }, { $set: { stock: n } });
+    expectStatus(assert, await ctx.request('PUT', `/products/${id}`, { token: fx.tokens.admin, body: { stock: 15 } }), 400);
     // Two admins both see 10: A receives 5 units, B finds 3 damaged. Intended result: 12.
     await reset(10);
-    await ctx.request('PUT', `/products/${id}`, { token: fx.tokens.admin, body: { stock: 15 } });
-    await ctx.request('PUT', `/products/${id}`, { token: fx.tokens.admin, body: { stock: 7 } });
+    await absolute(15);
+    await absolute(7);
     assert.equal(await stock(), 7, 'absolute update: A\'s delivery is lost');
     await reset(10);
     await add(5);
@@ -307,7 +311,7 @@ describe('Manual stock adjustments', { skip: ctx.skipReason }, () => {
     // A sale while the admin is looking: the absolute update erases it, compare-and-set refuses.
     await reset(10);
     await ctx.placeOrder(fx.tokens.customer, [{ productId: id, quantity: 2 }]);
-    await ctx.request('PUT', `/products/${id}`, { token: fx.tokens.admin, body: { stock: 10 } });
+    await absolute(10);
     assert.equal(await stock(), 10, 'absolute update: the sale was erased');
     await reset(10);
     await ctx.placeOrder(fx.tokens.customer, [{ productId: id, quantity: 2 }]);

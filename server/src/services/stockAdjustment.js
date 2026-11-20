@@ -31,7 +31,15 @@ export class StockAdjustmentError extends Error {
 const FIELDS = 'title sku stock trackStock lowStockAlert isActive';
 const ZERO_OR_MISSING = [{ stock: 0 }, { stock: { $exists: false } }, { stock: null }];
 
-const stockValue = (p) => (typeof p.stock === 'number' ? p.stock : 0);
+export const stockValue = (p) => (typeof p.stock === 'number' ? p.stock : 0);
+
+/**
+ * Filter condition "stock still equals what the admin saw". expectedStock 0 also matches a missing or
+ * null stock (legacy documents count as 0). Used by setStock and by the product edit form (5G.3).
+ */
+export function expectedStockFilter(expectedStock) {
+  return expectedStock === 0 ? { $or: ZERO_OR_MISSING } : { stock: expectedStock };
+}
 
 function view(p) {
   return {
@@ -92,9 +100,7 @@ export async function adjustStock({ productId, operation, quantity, reason, acto
 
 export async function setStock({ productId, quantity, expectedStock, reason, actorId }) {
   assertId(productId);
-  const filter = expectedStock === 0
-    ? { _id: productId, $or: ZERO_OR_MISSING }
-    : { _id: productId, stock: expectedStock };
+  const filter = { _id: productId, ...expectedStockFilter(expectedStock) };
 
   const updated = await Product.findOneAndUpdate(filter, { $set: { stock: quantity } }, { new: true, projection: FIELDS }).lean();
   if (!updated) {

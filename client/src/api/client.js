@@ -22,6 +22,7 @@ export async function api(path, options = {}) {
     error.status = res.status;
     // Per-field validation messages from the API, e.g. { price: 'price must be greater than 0' }
     error.errors = data.errors && typeof data.errors === 'object' ? data.errors : null;
+    error.data = data; // full error body, e.g. { code: 'STOCK_CONFLICT', currentStock } on a product edit
     throw error;
   }
   return data;

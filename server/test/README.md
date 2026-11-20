@@ -25,14 +25,16 @@ management, slug history, guarded delete, product relationships, category images
 (state machine, exactly-once stock restoration in transactions), `order-status-standalone` (503 without
 transactions), `order-admin` (admin order list/search/pagination, order detail,
 dashboard statistics), `stock-adjustment` (manual add/remove and compare-and-set stock
-counts, races with checkout and cancellation, audit log lines), `orders`, `uploads` (Cloudinary),
+counts, races with checkout and cancellation, audit log lines), `product-edit-stock` (product edits never
+overwrite concurrent stock changes; stock changes need `expectedStock`, 409 on a stale value), `orders`, `uploads` (Cloudinary),
 `cms`, `dashboard`, `error-responses`, `test-safety`. Unit tests: `server/test/unit/` (including `order-input`, `order-number`, `order-status`, `order-list-query` and `stock-input`).
 
 Browser (end-to-end) suites live in `client/test/` (`npm run test:e2e`): `admin-routing` (direct links,
 refresh, auth redirects), `admin-products` (product list, create, edit, delete, uploads) and
 `admin-categories` (category list, create/edit, deactivate/restore, delete, storefront visibility) and
 `admin-orders` (dashboard statistics, order list/search/filters/pagination, order detail, status actions) and
-`admin-responsive` (admin layout at 390/430/768/1024/1440px, mobile navigation drawer). They need a
+`admin-responsive` (admin layout at 390/430/768/1024/1440px, mobile navigation drawer) and
+`admin-product-stock` (edit form omits untouched stock, sends `expectedStock` on change, stock-conflict message). They need a
 local Chrome/Chromium (`CHROME_BIN` to override) and are skipped otherwise.
 
 `server/test/helpers/cloudinaryMock.js` is a local stand-in for the Cloudinary REST API. The API under test is

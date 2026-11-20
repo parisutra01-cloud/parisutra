@@ -48,9 +48,11 @@ describe('Product APIs', { skip: ctx.skipReason }, () => {
   });
 
   test('PROD-17 update title/price/stock/category persists and is visible on re-read', async () => {
+    // Since Phase 5G.3 a stock change carries the stock the admin saw (compare-and-set).
+    const { stock: expectedStock } = await ctx.models.Product.findById(fx.lace._id).lean();
     const res = await ctx.request('PUT', `/products/${fx.lace._id}`, {
       token: fx.tokens.admin,
-      body: { title: 'Test Gold Lace Edited', price: 550, stock: 12, category: String(fx.trims._id) },
+      body: { title: 'Test Gold Lace Edited', price: 550, stock: 12, expectedStock, category: String(fx.trims._id) },
     });
     expectStatus(assert, res, 200);
     const read = await ctx.request('GET', `/products/${fx.lace._id}`);

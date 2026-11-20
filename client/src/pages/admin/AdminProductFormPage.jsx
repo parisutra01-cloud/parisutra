@@ -48,8 +48,19 @@ function fromProduct(p) {
   };
 }
 
+/**
+ * Stock on edit (Phase 5G.3): the value loaded with the product is the concurrency guard. Stock is
+ * sent only when the admin changed the field, together with that original value as expectedStock;
+ * the server applies it only if the database still holds it. Missing/null stock counts as 0.
+ */
+function stockBaselineOf(p) {
+  const value = typeof p.stock === 'number' ? p.stock : 0;
+  return { value, text: numText(value) };
+}
+const stockEdited = (form, baseline) => Boolean(baseline) && (form.stock.trim() === '' || Number(form.stock) !== baseline.value);
+
 /** Mirrors the server rules so most mistakes are caught before a round trip. */
-function validate(form) {
+function validate(form, { checkStock = true } = {}) {
   const e = {};
   const title = form.title.trim();
   if (!title) e.title = 'Title is required';
@@ -65,6 +76,7 @@ function validate(form) {
   }
   if (form.costPrice !== '' && (!Number.isFinite(Number(form.costPrice)) || Number(form.costPrice) < 0)) e.costPrice = 'Cost price cannot be negative';
   for (const [key, label] of [['stock', 'Stock'], ['lowStockAlert', 'Low stock alert']]) {
+    if (key === 'stock' && !checkStock) continue; // unchanged stock is not sent, so it is not validated
     const n = Number(form[key]);
     if (form[key] === '') e[key] = `${label} is required`;
     else if (!Number.isInteger(n) || n < 0) e[key] = `${label} must be a whole number of 0 or more`;
@@ -73,7 +85,7 @@ function validate(form) {
   return e;
 }
 
-function toPayload(form, { isActive, isEdit }) {
+function toPayload(form, { isActive, isEdit, stockBaseline }) {
   const payload = {
     title: form.title.trim(),
     category: form.category,
@@ -99,6 +111,14 @@ function toPayload(form, { isActive, isEdit }) {
   };
   const slug = toSlug(form.slug);
   if (slug || isEdit) payload.slug = slug;
+  if (isEdit) {
+    // Never write back the stock the form was opened with: checkout or another admin may have changed it.
+    delete payload.stock;
+    if (stockEdited(form, stockBaseline)) {
+      payload.stock = Number(form.stock);
+      payload.expectedStock = stockBaseline.value;
+    }
+  }
   return payload;
 }
 
@@ -188,6 +208,8 @@ export default function AdminProductFormPage() {
 
   const [form, setForm] = useState(EMPTY);
   const [original, setOriginal] = useState(null);
+  const [stockBaseline, setStockBaseline] = useState(null);
+  const [stockConflict, setStockConflict] = useState(null);
   const [categories, setCategories] = useState([]);
   const [loadState, setLoadState] = useState(isEdit ? 'loading' : 'ready');
   const [loadError, setLoadError] = useState('');
@@ -229,6 +251,8 @@ export default function AdminProductFormPage() {
       .then((d) => {
         setForm(fromProduct(d.product));
         setOriginal(d.product);
+        setStockBaseline(stockBaselineOf(d.product));
+        setStockConflict(null);
         setLoadState('ready');
       })
       .catch((err) => {
@@ -308,7 +332,7 @@ export default function AdminProductFormPage() {
 
   const save = async (isActive) => {
     if (saving || uploading) return;
-    const clientErrors = validate(form);
+    const clientErrors = validate(form, { checkStock: !isEdit || stockEdited(form, stockBaseline) });
     setErrors(clientErrors);
     if (Object.keys(clientErrors).length) {
       showToast('Please fix the highlighted fields.', 'error');
@@ -317,7 +341,7 @@ export default function AdminProductFormPage() {
     }
     setSaving(true);
     try {
-      const payload = toPayload(form, { isActive, isEdit });
+      const payload = toPayload(form, { isActive, isEdit, stockBaseline });
       const { product } = await api(isEdit ? `/products/${id}` : '/products', {
         method: isEdit ? 'PUT' : 'POST',
         body: JSON.stringify(payload),
@@ -326,6 +350,10 @@ export default function AdminProductFormPage() {
       const verb = isEdit ? 'updated' : isActive ? 'published' : 'saved as a draft';
       navigate('/admin/products', { state: { flash: `Product “${product.title}” ${verb}.` } });
     } catch (err) {
+      if (err.status === 409 && err.data?.code === 'STOCK_CONFLICT') {
+        // Nothing was saved. Keep the admin's edits and the original guard value; no automatic retry.
+        setStockConflict({ openedWith: stockBaseline.value, currentStock: err.data.currentStock, attempted: form.stock });
+      }
       if (err.errors) {
         setErrors(err.errors);
         document.querySelector(`[name="${Object.keys(err.errors)[0]}"]`)?.focus();
@@ -557,7 +585,7 @@ export default function AdminProductFormPage() {
               <div>
                 <label className={labelClass} htmlFor="stock">Stock Quantity <span className="text-[#C92A52]">*</span></label>
                 <input type="number" inputMode="numeric" min="0" step="1" className={`${inputClass(errors.stock)} font-semibold`} {...bind('stock')} />
-                <FieldError name="stock" errors={errors} />
+                {!stockConflict && <FieldError name="stock" errors={errors} />}
               </div>
               <div>
                 <label className={labelClass} htmlFor="lowStockAlert">Low Stock Alert</label>
@@ -565,6 +593,30 @@ export default function AdminProductFormPage() {
                 <FieldError name="lowStockAlert" errors={errors} />
               </div>
             </div>
+            {stockConflict && (
+              <div role="alert" data-testid="stock-conflict" className="rounded-xl border border-[#E9B8C4] bg-[#FDF1F4] p-3.5 text-[12px] text-[#4A3439] space-y-2">
+                <p className="font-bold text-[#9B1C3A]">Stock changed while this form was open</p>
+                <p>
+                  It was <strong data-testid="stock-conflict-opened">{stockConflict.openedWith}</strong> when you opened the product
+                  and is now <strong data-testid="stock-conflict-current">{stockConflict.currentStock}</strong> (a sale, a cancellation
+                  or another admin). Nothing was saved; your other edits are still in the form.
+                </p>
+                <p>Review the current quantity and enter the stock you want again before saving.</p>
+                <button
+                  type="button"
+                  data-testid="stock-conflict-review"
+                  onClick={() => {
+                    setStockBaseline({ value: stockConflict.currentStock, text: numText(stockConflict.currentStock) });
+                    setForm((f) => ({ ...f, stock: numText(stockConflict.currentStock) }));
+                    setErrors(({ stock: _, ...rest }) => rest);
+                    setStockConflict(null);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-[#E6D3D8] text-[#8E1838] font-semibold cursor-pointer hover:bg-[#FDF5F7]"
+                >
+                  Start from current stock ({stockConflict.currentStock})
+                </button>
+              </div>
+            )}
             <Toggle label="Track Stock" hint="Prevent orders when stock runs out" name="trackStock" checked={form.trackStock} onChange={set('trackStock')} />
           </Card>
 

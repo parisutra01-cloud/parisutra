@@ -6,8 +6,10 @@ import { authRequired, adminRequired } from '../middleware/auth.js';
 import { slugify } from '../utils/slugify.js';
 import { escapeRegex } from '../utils/escapeRegex.js';
 import { parseProductInput, crossFieldErrors, validationBody } from '../utils/productInput.js';
-import { StockInputError, parseStockAdjustment, parseStockSet } from '../utils/stockInput.js';
-import { StockAdjustmentError, adjustStock, setStock } from '../services/stockAdjustment.js';
+import { StockInputError, parseStockAdjustment, parseStockSet, parseExpectedStock } from '../utils/stockInput.js';
+import {
+  StockAdjustmentError, adjustStock, setStock, expectedStockFilter, stockValue, logStockChange,
+} from '../services/stockAdjustment.js';
 
 const router = asyncRouter();
 
@@ -272,12 +274,36 @@ router.post('/', authRequired, adminRequired, async (req, res, next) => {
   }
 });
 
+/**
+ * Stock on a product edit (Phase 5G.3). Omitted stock is never written. A stock change must carry
+ * expectedStock (the value shown when the form was opened); it is applied only if the database still
+ * holds that value, in the same atomic update as the other edits. Returns { expectedStock } or errors.
+ */
+function editStockGuard(body, errors) {
+  const own = (key) => body !== null && typeof body === 'object' && Object.prototype.hasOwnProperty.call(body, key);
+  if (!own('stock')) {
+    if (own('expectedStock')) errors.expectedStock = 'expectedStock is only accepted together with a stock change';
+    return null;
+  }
+  if (!own('expectedStock')) {
+    errors.expectedStock = 'expectedStock (the stock shown when you opened the product) is required to change stock';
+    return null;
+  }
+  try {
+    return { expectedStock: parseExpectedStock(body.expectedStock) };
+  } catch (err) {
+    errors.expectedStock = err.message;
+    return null;
+  }
+}
+
 router.put('/:id', authRequired, adminRequired, async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return badRequest(res, 'Invalid id');
   const existing = await Product.findById(req.params.id);
   if (!existing) return res.status(404).json({ message: 'Product not found' });
 
   const { data, errors } = parseProductInput(req.body, { partial: true });
+  const stockGuard = editStockGuard(req.body, errors);
   Object.assign(errors, crossFieldErrors({ ...existing.toObject(), ...data }));
   if (Object.keys(errors).length) return res.status(400).json(validationBody(errors));
 
@@ -291,10 +317,27 @@ router.put('/:id', authRequired, adminRequired, async (req, res, next) => {
     return conflict(res, 'slug', 'Slug already exists');
   }
 
+  // One atomic update: when stock is changed, the filter also requires the stock the admin saw, so a
+  // sale, cancellation or another admin's change in the meantime makes the whole edit fail (409)
+  // instead of being overwritten. Without a stock change, stock is not in the update at all.
   const update = toUpdate(data);
+  const filter = { _id: existing._id, ...(stockGuard ? expectedStockFilter(stockGuard.expectedStock) : {}) };
   try {
-    const product = await Product.findByIdAndUpdate(existing._id, update, { new: true, runValidators: true })
+    const product = await Product.findOneAndUpdate(filter, update, { new: true, runValidators: true })
       .populate('category', 'name slug');
+    if (!product) {
+      const current = await Product.findById(existing._id).select('stock').lean();
+      if (!current) return res.status(404).json({ message: 'Product not found' });
+      const currentStock = stockValue(current);
+      const message = `Stock changed while this form was open (now ${currentStock}). Nothing was saved. Review the current quantity, then save again.`;
+      return res.status(409).json({ message, code: 'STOCK_CONFLICT', currentStock, errors: { stock: message } });
+    }
+    if (stockGuard) {
+      logStockChange({
+        actorId: String(req.userId), productId: String(product._id), operation: 'product_edit', quantity: product.stock,
+        previousStock: stockGuard.expectedStock, newStock: product.stock, reason: 'Product edit form',
+      });
+    }
     res.json({ product });
   } catch (err) {
     if (err?.code === 11000) return conflict(res, 'slug', 'Slug already exists');
@@ -302,10 +345,6 @@ router.put('/:id', authRequired, adminRequired, async (req, res, next) => {
   }
 });
 
-/**
- * Soft delete: the product is hidden from the storefront (isActive=false) but kept, because orders,
- * wishlists and reports reference it. It can be restored from the edit page (status → Active).
- */
 /* ── Manual stock operations (Phase 5G.2): atomic, admin only, reason required ─────────── */
 
 function stockError(res, err) {
@@ -334,6 +373,10 @@ router.post('/:id/stock/set', authRequired, adminRequired, async (req, res) => {
   }
 });
 
+/**
+ * Soft delete: the product is hidden from the storefront (isActive=false) but kept, because orders,
+ * wishlists and reports reference it. It can be restored from the edit page (status → Active).
+ */
 router.delete('/:id', authRequired, adminRequired, async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return badRequest(res, 'Invalid id');
   const product = await Product.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });

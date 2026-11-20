@@ -14,7 +14,8 @@ Use **two Vercel projects** from the **same GitHub repo**.
 1. Vercel → **Add New Project** → same repo.
 2. **Project name:** e.g. `parisutra-api`.
 3. **Root Directory:** `.` (repository root — **not** `client`).
-4. Framework: **Other** (uses root `vercel.json`).
+4. Framework: **Express** (or leave it on auto). Root Directory stays `.`.
+   Do **not** set Output Directory to `public`. Vercel looks for `index.js` in that folder and the API entry is the repo-root `index.js`.
 5. **Environment variables** (no `VITE_*` needed here):
 
 | Variable | Example |
